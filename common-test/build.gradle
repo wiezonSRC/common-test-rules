@@ -1,0 +1,66 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'com.company'
+version = '0.0.1'
+description = 'common-test'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+
+test {
+    useJUnitPlatform()
+}
+
+tasks.register('testJar', Jar) {
+    archiveClassifier = 'tests'
+    from sourceSets.test.output
+}
+
+
+artifacts {
+    archives testJar
+}
+
+//JITPACK
+publishing {
+    publications {
+        testLib(MavenPublication) {
+            artifactId = 'common-test'
+            artifact testJar
+        }
+    }
+}
+
+
+
+
+dependencies {
+
+    //main 전용 (sample)
+    implementation 'org.springframework.boot:spring-boot-starter:3.2.1'
+    implementation 'org.springframework:spring-tx:6.1.2'
+    implementation 'org.springframework:spring-context:6.1.2'
+    runtimeOnly 'com.h2database:h2:2.2.224'
+
+
+    //test 전용
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testImplementation 'org.springframework:spring-tx:6.1.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    testImplementation 'org.ow2.asm:asm:9.6'
+    testImplementation 'org.ow2.asm:asm-tree:9.6'
+    testImplementation 'org.springframework:spring-context'
+}
+
