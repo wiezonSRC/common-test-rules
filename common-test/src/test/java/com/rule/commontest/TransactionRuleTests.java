@@ -12,6 +12,8 @@ import java.io.InputStream;
 import java.util.Set;
 
 public class TransactionRuleTests {
+
+    //FIXME) env로 base pacakge 값 사용
     private static final String BASE_PACKAGE = "com.rule"; // 대상 루트 패키지
 
     @Test
