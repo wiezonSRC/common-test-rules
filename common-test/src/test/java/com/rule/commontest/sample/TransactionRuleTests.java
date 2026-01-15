@@ -1,4 +1,4 @@
-package com.rule.commontest;
+package com.rule.commontest.sample;
 
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.*;
@@ -30,7 +30,7 @@ public class TransactionRuleTests {
     }
 
     /**
-     * 1️⃣ @Service 클래스 스캔 (Spring Context ❌)
+     * @Service 클래스 스캔
      */
     private Set<Class<?>> scanServiceClasses() throws ClassNotFoundException {
 
@@ -48,7 +48,7 @@ public class TransactionRuleTests {
     }
 
     /**
-     * 2️⃣ ASM 분석
+     * ASM 분석
      */
     private void analyzeClassWithAsm(Class<?> clazz) throws Exception {
 
@@ -83,7 +83,7 @@ public class TransactionRuleTests {
     }
 
     /**
-     * 3️⃣ @Transactional 여부 (ASM)
+     * @Transactional 여부 (ASM)
      */
     private boolean hasTransactional(MethodNode method) {
         if (method.visibleAnnotations == null) return false;
@@ -93,7 +93,7 @@ public class TransactionRuleTests {
     }
 
     /**
-     * 4️⃣ try-catch + return 탐지
+     * try-catch + return 탐지
      */
     private boolean hasCatchAndReturn(MethodNode method) {
 
@@ -111,7 +111,7 @@ public class TransactionRuleTests {
     }
 
     /**
-     * 5️⃣ DataAccess Service 필터 (1차 버전)
+     * DataAccess Service 필터 (1차 버전)
      */
     private boolean isDataAccessService(Class<?> clazz) {
         return java.util.Arrays.stream(clazz.getDeclaredFields())
