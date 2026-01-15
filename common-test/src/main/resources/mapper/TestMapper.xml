@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="TestMapper">
+
+    <select id="selectTest" resultType="map">
+        SELECT ID, NAME
+        FROM TBSI_TEST
+        WHERE ID = #{id}
+    </select>
+
+    <insert id="insertTest">
+        INSERT INTO TBSI_TEST (NAME)
+        VALUES (#{name})
+    </insert>
+
+    <update id="updateTest">
+        UPDATE TBSI_TEST
+        SET NAME = #{name}
+        WHERE ID = #{id}
+    </update>
+
+    <delete id="deleteTest">
+        DELETE FROM TBSI_TEST
+        WHERE ID = #{id}
+    </delete>
+
+</mapper>
