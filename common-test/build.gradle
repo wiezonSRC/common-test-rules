@@ -48,19 +48,40 @@ publishing {
 dependencies {
 
     //main 전용 (sample)
+
     implementation 'org.springframework.boot:spring-boot-starter:3.2.1'
     implementation 'org.springframework:spring-tx:6.1.2'
     implementation 'org.springframework:spring-context:6.1.2'
-    runtimeOnly 'com.h2database:h2:2.2.224'
+    // MyBatis
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+    implementation 'org.mariadb.jdbc:mariadb-java-client:3.3.3'
 
+
+    // JUnit 5
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Spring Test (핵심)
+    testImplementation 'org.springframework:spring-test:6.1.2'
+
+    // Spring Boot Test (SpringBootTest 어노테이션)
+    testImplementation 'org.springframework.boot:spring-boot-test:3.2.1'
+
+    // Spring Core (Context 로딩용)
+    testImplementation 'org.springframework:spring-context:6.1.2'
+    testImplementation 'org.springframework:spring-tx:6.1.2'
 
     //test 전용
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
-    testImplementation 'org.springframework:spring-tx:6.1.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // MyBatis
+    testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+
+    // DB Driver (택1)
+    testImplementation 'org.mariadb.jdbc:mariadb-java-client:3.3.3'
 
     testImplementation 'org.ow2.asm:asm:9.6'
     testImplementation 'org.ow2.asm:asm-tree:9.6'
-    testImplementation 'org.springframework:spring-context'
+//    testImplementation 'org.springframework:spring-context'
 }
 
