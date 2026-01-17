@@ -8,6 +8,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.List;
 
 
 /**
@@ -45,6 +51,31 @@ public class WriteSqlStaticRuleTest extends SqlIntegrationTestBase{
     private final static String whereRegex = "(?s).*\\bWHERE\\b.*";
 
     @Test
+    @DisplayName("${} 사용 불가 - Injection 위험")
+    void mapperXml_shouldNotContainDollarExpression() throws Exception {
+
+        PathMatchingResourcePatternResolver resolver =
+                new PathMatchingResourcePatternResolver();
+
+        Resource[] resources =
+                resolver.getResources("classpath*:mapper/**/*.xml");
+
+
+        for (Resource resource : resources) {
+            List<String> lines = Files.readAllLines(resource.getFile().toPath(),StandardCharsets.UTF_8);
+
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i);
+                if(line.contains("--")){
+                    System.out.printf("[WARN] 주석처리 ${} 확인 필요 >> \n File : %s \n Line Number : %d \n Content : %s ", resource.getURI(), i+1,line.trim());
+                } else if(line.contains("${")){
+                    Assertions.fail("${} 발견 >>  \n File : %s \n Line Number : %d \n Content : %s ".formatted(resource.getURI(), i+1, line.trim()));
+                }
+            }
+        }
+    }
+
+    @Test
     @DisplayName("INSERT / UPDATE / DELETE 정적 규칙 테스트")
     void writeSql_shouldFollowRules() {
         for (Object obj : factory.getConfiguration().getMappedStatements()) {
@@ -57,7 +88,8 @@ public class WriteSqlStaticRuleTest extends SqlIntegrationTestBase{
             if (type == SqlCommandType.SELECT) continue;
 
             BoundSql bs = ms.getBoundSql(SqlParamFactory.createDefault());
-            String sql = bs.getSql().toUpperCase();
+            String sql = SqlParamFactory.explainableSql(bs).toUpperCase();
+
 
             // UPDATE without WHERE
             if (type == SqlCommandType.UPDATE) {
