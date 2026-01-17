@@ -35,7 +35,7 @@ public class SelectExplainTest extends SqlIntegrationTestBase{
                 if (ms.getSqlCommandType() != SqlCommandType.SELECT) continue;
 
                 BoundSql bs = ms.getBoundSql(SqlParamFactory.createDefault());
-                String sql = explainableSql(bs);
+                String sql = SqlParamFactory.explainableSql(bs);
 
                 try (PreparedStatement ps = conn.prepareStatement("EXPLAIN " + sql)) {
                     ps.executeQuery();
@@ -46,16 +46,4 @@ public class SelectExplainTest extends SqlIntegrationTestBase{
         }
     }
 
-
-    private String explainableSql(BoundSql bs){
-        String sql = bs.getSql();
-
-        int paramCnt = bs.getParameterMappings().size();
-
-        for (int i = 0; i <paramCnt; i++) {
-            sql = sql.replaceFirst("\\?", "TEST");
-        }
-
-        return sql;
-    }
 }
