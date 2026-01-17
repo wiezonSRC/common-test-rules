@@ -1,5 +1,7 @@
 package com.rule.commontest.sample;
 
+import org.apache.ibatis.mapping.BoundSql;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,11 +24,18 @@ public class SqlParamFactory {
         return p;
     }
 
-    /** 타입별 fallback */
-    public static Object defaultValue(String name) {
-        if (name.toLowerCase().contains("id")) return "TEST";
-        if (name.toLowerCase().contains("cnt")) return 0;
-        return "TEST";
+
+
+    public static String explainableSql(BoundSql bs){
+        String sql = bs.getSql();
+
+        int paramCnt = bs.getParameterMappings().size();
+
+        for (int i = 0; i <paramCnt; i++) {
+            sql = sql.replaceFirst("\\?", "TEST");
+        }
+
+        return sql;
     }
 
 }
