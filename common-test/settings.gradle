@@ -1,6 +1,13 @@
+pluginManagement {
+    includeBuild("rule-plugin")
+}
 rootProject.name = 'common-test'
+
+include("sample-target")
+include("rule-core")
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
     }
 }
+
