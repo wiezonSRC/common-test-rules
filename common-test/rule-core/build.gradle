@@ -1,0 +1,19 @@
+plugins {
+    id "java-library"
+}
+
+group = "com.example"
+version = "0.1.0"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+dependencies {
+    // 나중에 ASM, Spring, MyBatis 등 추가 가능
+    testImplementation(project(":rule-core"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
