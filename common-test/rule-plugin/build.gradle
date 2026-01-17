@@ -1,0 +1,24 @@
+plugins {
+    id 'java-gradle-plugin'
+}
+
+group = "com.example"
+version = "0.1.0"
+
+repositories {
+    mavenCentral()
+}
+
+gradlePlugin {
+    plugins {
+        simpleRule {
+            id = "com.example.simple-rule"
+            implementationClass = "com.example.ruleplugin.SimpleRulePlugin"
+        }
+    }
+}
+
+
+dependencies {
+}
+
