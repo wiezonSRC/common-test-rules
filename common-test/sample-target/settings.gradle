@@ -1,0 +1,6 @@
+rootProject.name = "sample-target"
+
+
+pluginManagement {
+    includeBuild("../rule-plugin")
+}
