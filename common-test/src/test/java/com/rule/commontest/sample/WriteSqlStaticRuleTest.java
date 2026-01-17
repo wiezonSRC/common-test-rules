@@ -57,6 +57,7 @@ public class WriteSqlStaticRuleTest extends SqlIntegrationTestBase{
         PathMatchingResourcePatternResolver resolver =
                 new PathMatchingResourcePatternResolver();
 
+        //FIXME mapper 패키지 properties로 받기
         Resource[] resources =
                 resolver.getResources("classpath*:mapper/**/*.xml");
 
