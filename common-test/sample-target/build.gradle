@@ -7,15 +7,44 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
 
+ruleGate {
+    basePackage = "com.rule.commontest"
+    mapperDirs = [
+            "src/main/resources/mapper"
+    ]
+}
+
+dependencies {
+    // ===== 실제 애플리케이션 코드 =====
+    implementation 'org.springframework.boot:spring-boot-starter:3.2.1'
+    implementation 'org.springframework:spring-context:6.1.2'
+    implementation 'org.springframework:spring-tx:6.1.2'
+
+    // MyBatis
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+
+    // DB Driver (샘플용)
+    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client:3.3.3'
+
+    // ===== 테스트 =====
     testImplementation(project(":rule-core"))
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-}
 
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    testImplementation 'org.springframework:spring-test:6.1.2'
+    testImplementation 'org.springframework.boot:spring-boot-test:3.2.1'
+}
 
 test {
     useJUnitPlatform()
@@ -27,3 +56,4 @@ test {
         showStandardStreams = true
     }
 }
+
