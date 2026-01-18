@@ -23,9 +23,12 @@ public class SimpleRulePlugin implements Plugin<Project> {
                 project.getExtensions().create("ruleGate", RuleGateExtension.class);
 
         // 1. 생성될 디렉토리 경로 정의
-        Path genDir = project.getBuildDir()
-                .toPath()
-                .resolve("generated/rule-gate-tests");
+        Path genDir = project.getLayout()
+                .getBuildDirectory()
+                .dir("generated/rule-gate-tests")
+                .get()
+                .getAsFile()
+                .toPath();
 
         // 2. SourceSet 등록은 Configuration 단계에서 미리 수행해야 함
         //    (그래야 Gradle이 컴파일할 때 이 경로를 소스 경로로 인식함)
