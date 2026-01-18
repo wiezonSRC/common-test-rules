@@ -10,10 +10,19 @@ java {
         languageVersion = JavaLanguageVersion.of(17)
     }
 }
+
+repositories {
+    mavenCentral()
+}
+
+
 dependencies {
-    // 나중에 ASM, Spring, MyBatis 등 추가 가능
-    testImplementation(project(":rule-core"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // 내부 구현용
+    implementation 'org.ow2.asm:asm:9.6'
+    implementation 'org.ow2.asm:asm-tree:9.6'
+
+    compileOnly 'org.springframework:spring-context:6.1.2'
+    compileOnly 'org.springframework:spring-tx:6.1.2'
+    compileOnly 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 }
 
