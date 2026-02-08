@@ -1,4 +1,4 @@
-package com.example.rulecore;
+package com.example.rulecore.ruleEngine;
 
 import java.util.List;
 
