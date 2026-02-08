@@ -39,13 +39,41 @@ Rule Core는 단순한 라이브러리를 넘어, 프로젝트 전반의 표준�
 
 ### 3. 배포 절차 (Deployment Procedure)
 
-#### 로컬 테스트 배포
-개발 중인 플러그인을 로컬 환경에서 테스트하려면 아래 명령어를 실행합니다.
+플러그인이나 규칙 로직을 변경한 후에는 이를 배포해야 다른 프로젝트에서 변경 사항을 적용받을 수 있습니다.
+
+#### 로컬 테스트 배포 (Local Deployment)
+개발 중인 변경 사항을 로컬 환경의 다른 프로젝트(`sample-target` 등)에서 즉시 확인하려면 로컬 Maven 저장소에 배포합니다.
+
 ```bash
 # rule-core 프로젝트 루트에서 실행
 ./gradlew :rule-core:publishToMavenLocal
 ```
-이 명령은 로컬 Maven 저장소(`~/.m2/repository`)에 플러그인을 배포합니다.
+
+**⚠️ 주의사항 및 팁:**
+*   **버전 갱신:** 이미 같은 버전(예: `0.1.2`)이 로컬 저장소에 있다면, 배포 후에도 캐시로 인해 변경 사항이 반영되지 않을 수 있습니다. 
+*   **해결 방법:** `rule-core/build.gradle`에서 `version`을 업데이트하거나, 개발 중에는 `0.1.2-SNAPSHOT`과 같이 버전 끝에 `-SNAPSHOT`을 붙여 관리하는 것이 좋습니다.
+
+#### 원격 저장소 배포 (Remote Deployment)
+사내 Nexus, Artifactory 또는 Maven Central과 같은 원격 저장소에 배포하려면 `rule-core/build.gradle`에 저장소 설정이 필요합니다.
+
+1.  **저장소 설정 추가:**
+    ```groovy
+    publishing {
+        repositories {
+            maven {
+                url = "원격_저장소_URL"
+                credentials {
+                    username = "ID"
+                    password = "PASSWORD"
+                }
+            }
+        }
+    }
+    ```
+2.  **배포 실행:**
+    ```bash
+    ./gradlew :rule-core:publish
+    ```
 
 #### 프로젝트 적용 방법
 플러그인을 적용할 프로젝트의 `build.gradle`에 다음과 같이 선언합니다.

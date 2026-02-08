@@ -1,6 +1,6 @@
 plugins {
     id "java"
-    id "com.company.rule-core" version "0.1.2"
+    id "com.company.rule-core" version "0.1.3"
 }
 
 ruleCore {
@@ -8,6 +8,7 @@ ruleCore {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
@@ -30,7 +31,9 @@ dependencies {
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client:3.3.3'
 
     // ===== 테스트 =====
-    testImplementation(project(":rule-core"))
+    testImplementation("com.example:rule-core:0.1.3") {
+        exclude group: "org.gradle", module: "gradle-api"
+    }
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0' // ArchUnit 추가
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
