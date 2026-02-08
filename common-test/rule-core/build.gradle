@@ -1,9 +1,11 @@
 plugins {
     id "java-library"
+    id "java-gradle-plugin"
+    id "maven-publish"
 }
 
 group = "com.example"
-version = "0.1.0"
+version = "0.1.2"
 
 java {
     toolchain {
@@ -13,10 +15,12 @@ java {
 
 repositories {
     mavenCentral()
+    gradlePluginPortal()
 }
 
-
 dependencies {
+    implementation 'com.diffplug.spotless:spotless-plugin-gradle:6.25.0' // Formatter Plugin
+
     // 내부 구현용
     implementation 'org.ow2.asm:asm:9.6'
     implementation 'org.ow2.asm:asm-tree:9.6'
@@ -25,10 +29,19 @@ dependencies {
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.21.0") //objectMapper
     implementation("org.projectlombok:lombok:1.18.42")
+    annotationProcessor("org.projectlombok:lombok:1.18.42")
 
     compileOnly 'org.springframework:spring-context:6.1.2'
     compileOnly 'org.springframework:spring-tx:6.1.2'
     compileOnly 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+}
 
+gradlePlugin {
+    plugins {
+        ruleCorePlugin {
+            id = 'com.company.rule-core'
+            implementationClass = 'com.example.rulecore.RuleCorePlugin'
+        }
+    }
 }
 
