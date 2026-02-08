@@ -6,6 +6,7 @@ import com.example.rulecore.ruleEngine.RuleViolation;
 import com.example.rulecore.util.SqlParamFactory;
 import com.example.rulecore.util.Status;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.*;
 import org.apache.ibatis.mapping.BoundSql;
