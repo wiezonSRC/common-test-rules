@@ -2,7 +2,9 @@ package com.example.rulecore.ruleEngine;
 
 import com.example.rulecore.rules.java.fail.*;
 import com.example.rulecore.rules.sql.fail.*;
+import com.example.rulecore.rules.java.warn.JavaCodingConventionRule;
 import com.example.rulecore.rules.style.warn.JavaNamingRule;
+import com.example.rulecore.rules.style.warn.SqlAdvancedStyleRule;
 import com.example.rulecore.rules.style.fail.SqlStyleRule;
 
 import java.util.Arrays;
@@ -24,7 +26,8 @@ public enum RuleGroups {
             new JavaStandardRule(),
             new JavaConstantsRule(),
             new NoGenericCatchRule(),
-            new LombokUsageRule()
+            new LombokUsageRule(),
+            new JavaCodingConventionRule()
     ),
 
     /**
@@ -35,7 +38,8 @@ public enum RuleGroups {
             new NoDollarExpressionRule(),
             new SqlStyleRule(),
             new MyBatisXmlRule(),
-            new SqlBasicPerformanceRule()
+            new SqlBasicPerformanceRule(),
+            new SqlAdvancedStyleRule()
     ),
 
     /**
@@ -49,11 +53,13 @@ public enum RuleGroups {
             new JavaConstantsRule(),
             new NoGenericCatchRule(),
             new LombokUsageRule(),
+            new JavaCodingConventionRule(),
             new TransactionalSwallowExceptionRule(),
             new NoDollarExpressionRule(),
             new SqlStyleRule(),
             new MyBatisXmlRule(),
-            new SqlBasicPerformanceRule()
+            new SqlBasicPerformanceRule(),
+            new SqlAdvancedStyleRule()
     );
 
     private final List<Rule> rules;

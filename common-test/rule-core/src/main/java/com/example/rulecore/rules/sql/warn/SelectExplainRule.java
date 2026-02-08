@@ -13,6 +13,7 @@ import org.apache.ibatis.session.Configuration;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -59,11 +60,34 @@ public class SelectExplainRule implements Rule {
                 BoundSql bs = ms.getBoundSql(SqlParamFactory.createDefault());
                 String sql = SqlParamFactory.explainableSql(bs);
 
-                //FIXME) Explain에서  All fullscan의 경우 warning 띄우기
-                try (PreparedStatement ps =
-                             conn.prepareStatement("EXPLAIN " + sql)) {
+                // Explain 실행
+                try (PreparedStatement ps = conn.prepareStatement("EXPLAIN " + sql);
+                     ResultSet rs = ps.executeQuery()) {
 
-                    ps.executeQuery();
+                    while (rs.next()) {
+                        // MariaDB/MySQL EXPLAIN output columns: id, select_type, table, type, possible_keys, key, key_len, ref, rows, Extra
+                        String type = rs.getString("type");
+                        String extra = rs.getString("Extra");
+                        String table = rs.getString("table");
+
+                        if ("ALL".equalsIgnoreCase(type)) {
+                            violations.add(new RuleViolation(
+                                    RULE_NAME,
+                                    Status.WARN,
+                                    "Full Table Scan detected (type=ALL) on table '" + table + "'. Check indexing.",
+                                    ms.getId()
+                            ));
+                        }
+
+                        if (extra != null && extra.contains("Using filesort")) {
+                            violations.add(new RuleViolation(
+                                    RULE_NAME,
+                                    Status.WARN,
+                                    "File Sort detected (Using filesort) on table '" + table + "'. Consider index for sorting.",
+                                    ms.getId()
+                            ));
+                        }
+                    }
 
                 } catch (SQLException e) {
                     violations.add(new RuleViolation(
