@@ -1,9 +1,7 @@
 package com.example.rulecore.ruleEngine;
 
-import com.example.rulecore.rules.java.fail.NoFieldInjectionRule;
-import com.example.rulecore.rules.java.fail.NoSystemOutRule;
-import com.example.rulecore.rules.sql.fail.NoDollarExpressionRule;
-import com.example.rulecore.rules.java.fail.TransactionalSwallowExceptionRule;
+import com.example.rulecore.rules.java.fail.*;
+import com.example.rulecore.rules.sql.fail.*;
 import com.example.rulecore.rules.style.warn.JavaNamingRule;
 import com.example.rulecore.rules.style.fail.SqlStyleRule;
 
@@ -17,12 +15,16 @@ import java.util.List;
 public enum RuleGroups {
 
     /**
-     * Java 표준 컨벤션 그룹 (네이밍, System.out 금지, 필드 주입 금지)
+     * Java 표준 컨벤션 그룹 (네이밍, 구조, 안전성)
      */
     JAVA_STANDARD(
             new JavaNamingRule(),
             new NoSystemOutRule(),
-            new NoFieldInjectionRule()
+            new NoFieldInjectionRule(),
+            new JavaStandardRule(),
+            new JavaConstantsRule(),
+            new NoGenericCatchRule(),
+            new LombokUsageRule()
     ),
 
     /**
@@ -31,7 +33,9 @@ public enum RuleGroups {
     SQL_SAFETY_AND_STYLE(
             new TransactionalSwallowExceptionRule(),
             new NoDollarExpressionRule(),
-            new SqlStyleRule()
+            new SqlStyleRule(),
+            new MyBatisXmlRule(),
+            new SqlBasicPerformanceRule()
     ),
 
     /**
@@ -41,9 +45,15 @@ public enum RuleGroups {
             new JavaNamingRule(),
             new NoSystemOutRule(),
             new NoFieldInjectionRule(),
+            new JavaStandardRule(),
+            new JavaConstantsRule(),
+            new NoGenericCatchRule(),
+            new LombokUsageRule(),
             new TransactionalSwallowExceptionRule(),
             new NoDollarExpressionRule(),
-            new SqlStyleRule()
+            new SqlStyleRule(),
+            new MyBatisXmlRule(),
+            new SqlBasicPerformanceRule()
     );
 
     private final List<Rule> rules;
