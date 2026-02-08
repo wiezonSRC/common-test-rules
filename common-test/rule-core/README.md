@@ -208,6 +208,7 @@ class ProjectRuleCheckTest {
 
 ---
 
+
 ## ➕ 규칙 추가 방법 (How to Contribute)
 
 새로운 규칙을 추가하려면 `Rule` 인터페이스를 구현하세요.
@@ -249,3 +250,22 @@ public class MyCustomRule implements Rule {
 ```
 
 작성한 규칙은 `RuleGroups` Enum에 추가하여 그룹으로 관리하거나, 테스트 코드에서 직접 사용할 수 있습니다.
+
+---
+## 🚀 향후 고도화 계획 (Roadmap)
+
+Rule Core는 성능 향상과 개발자 편의성을 위해 다음과 같은 기능을 고도화할 예정입니다.
+
+### 1. Git Hook (pre-commit) 통합
+개발자가 코드를 커밋하기 직전에 자동으로 검사를 수행하여, 잘못된 코드가 레포지토리에 올라가는 것을 원천 차단합니다.
+*   **Husky + lint-staged** 조합을 활용하여 커밋 시점에 `spotlessApply`를 자동 실행하도록 구성할 수 있습니다.
+
+### 2. 증분 검사 (Incremental Scanning) 도입
+프로젝트 규모가 커짐에 따라 전체 파일을 검사하는 것은 비효율적입니다.
+*   `git diff --cached --name-only` 명령어를 통해 **현재 수정된 파일 목록**만 추출합니다.
+*   `RuleRunner`가 전체 스캔 대신 **변경된 파일 리스트만 타겟팅**하여 검증하도록 로직을 개선하여 검사 속도를 획기적으로 단축할 계획입니다.
+
+### 3. CI/CD 파이프라인 최적화
+*   PR(Pull Request) 생성 시점에 변경된 파일에 대해서만 `spotlessCheck` 및 규칙 검사를 수행하는 전용 빌드 스크립트를 제공할 예정입니다.
+
+---
