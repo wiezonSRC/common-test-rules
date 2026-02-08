@@ -1,5 +1,10 @@
 plugins {
     id "java"
+    id "com.company.rule-core" version "0.1.2"
+}
+
+ruleCore {
+    enableFormatter = false
 }
 
 repositories {
