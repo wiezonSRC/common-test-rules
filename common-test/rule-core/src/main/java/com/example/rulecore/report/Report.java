@@ -22,12 +22,24 @@ public class Report {
      * @param warnList 경고 등급 위반 목록
      */
     public void createWarnReport(List<RuleViolation> warnList){
-        try {
-            Path path = Path.of(exportWarnPath);
-            Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(warnList).getBytes());
-        } catch (IOException e){
-            e.printStackTrace();
+        if(warnList.isEmpty()){
+            return;
         }
+
+        try {
+            Path path = resolvePath(exportWarnPath);
+
+            Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(warnList).getBytes());
+
+            System.out.println(
+                    "[WARN] " + warnList.size() +
+                            " rule violations detected. Report written to: " +
+                            path.toAbsolutePath().toUri()
+            );
+        } catch (IOException e){
+            System.err.println("[WARN] Failed to write warn report: " + e.getMessage());
+        }
+
     }
 
     /**
@@ -37,14 +49,26 @@ public class Report {
      * @param failList 실패 등급 위반 목록
      */
     public void createFailReport(List<RuleViolation> failList){
-        try{
-            Path path = Path.of(exportFailPath);
-            Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(failList).getBytes());
-            if (!failList.isEmpty()){
-                throw new AssertionError("Fail exists : size (" + failList.size() +"). \n Please Check fail-report.json");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+
+        if (failList.isEmpty()) {
+            return;
         }
+
+        Path path = resolvePath(exportFailPath);
+
+        try{
+            Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(failList).getBytes());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        throw new AssertionError("Fail exists : size (" + failList.size() +"). " +
+                "\n Please Check " + path.toAbsolutePath().toUri());
+    }
+
+    private Path resolvePath(String relativePath) {
+        return Path.of(relativePath)
+                .toAbsolutePath()
+                .normalize();
     }
 }

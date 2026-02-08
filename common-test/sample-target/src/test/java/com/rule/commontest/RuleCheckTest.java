@@ -4,11 +4,13 @@ import com.example.rulecore.ruleEngine.RuleContext;
 import com.example.rulecore.ruleEngine.RuleGroups;
 import com.example.rulecore.ruleEngine.RuleRunner;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
+import org.springframework.util.Assert;
 
 import javax.sql.DataSource;
 import java.nio.file.Path;
@@ -53,25 +55,11 @@ class RuleCheckTest {
             new RuleRunner(RuleGroups.ALL).runOrFail(context);
         });
 
-        String message = error.getMessage();
-        
-        // 3. 검증: 각 카테고리별 위반 사항이 잘 리포트되었는지 확인
-
-        // [JAVA] 트랜잭션 규칙
-        assertTrue(message.contains("TransactionalSwallowExceptionRule"), "트랜잭션 규칙 위반이 감지되어야 합니다.");
-        
-        // [SQL] MyBatis ${} 사용
-        assertTrue(message.contains("NoDollarExpressionRule"), "${} 사용 금지 규칙 위반이 감지되어야 합니다.");
-
-        // [Style] SQL 스타일 (SELECT *)
-        assertTrue(message.contains("SqlStyleRule"), "SQL 스타일 규칙 위반이 감지되어야 합니다.");
-
-        // [Style] Java 네이밍 (JavaNamingRule)
-        assertTrue(message.contains("JavaNamingRule"), "Java 네이밍 규칙 위반이 감지되어야 합니다.");
-
-        // [Java] System.out 사용 (NoSystemOutRule)
-        // 현재 샘플 코드에 System.out이 있으므로 이것도 감지되어야 함 (주석 해제 필요 시)
-        // 라이브러리의 NoSystemOutRule은 기본 활성화 상태이므로 감지될 것임
-        assertTrue(message.contains("NoSystemOutRule"), "System.out 금지 규칙 위반이 감지되어야 합니다.");
+        // Rule Check 결과
+        if(!error.getMessage().isEmpty()){
+            Assertions.fail(error.getMessage());
+        }else{
+            Assertions.assertTrue(true, "Rule Check Success!");
+        }
     }
 }

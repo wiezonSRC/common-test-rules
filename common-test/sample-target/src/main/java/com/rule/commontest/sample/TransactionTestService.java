@@ -1,5 +1,6 @@
 package com.rule.commontest.sample;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -8,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransactionTestService {
 
     private int Bad_Name; // JavaNamingRule 위반 유발
+    @Autowired
     private DummyMapper testMapper;
 
     public void run(){
@@ -20,8 +22,4 @@ public class TransactionTestService {
         }
     }
 
-
-    private class DummyMapper {
-
-    }
 }
