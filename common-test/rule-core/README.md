@@ -140,6 +140,29 @@ class ProjectRuleCheckTest {
 }
 ```
 
+### 4. 규칙 검사 및 포맷팅 실행 (Execution)
+
+플러그인과 테스트 코드가 설정되었다면, 대상 프로젝트의 터미널에서 아래 명령어를 통해 검사를 수행할 수 있습니다.
+
+#### A. 자동 코드 포맷팅 (Fix)
+코드 스타일, 공백, SQL 예약어 대문자 변환 등을 자동으로 적용합니다.
+```bash
+./gradlew spotlessApply
+```
+
+#### B. 규칙 위반 검사 (Check)
+작성한 JUnit 테스트를 실행하여 ArchUnit 및 SQL 규칙 위반 여부를 확인합니다.
+```bash
+./gradlew test
+```
+*위반 사항이 있을 경우 `fail-report.json`이 생성되며 빌드가 실패합니다.*
+
+#### C. 포맷팅 상태 확인 (CI/CD용)
+코드를 수정하지 않고 스타일 가이드 위반 여부만 확인합니다. 주로 배포 파이프라인(CI)에서 사용합니다.
+```bash
+./gradlew spotlessCheck
+```
+
 ---
 
 ## 📦 제공되는 규칙 (Available Rules)
