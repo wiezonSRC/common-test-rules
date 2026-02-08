@@ -31,11 +31,11 @@ public class SqlStyleRule implements Rule {
     public List<RuleViolation> check(RuleContext context) {
         List<RuleViolation> violations = new ArrayList<>();
 
-        if (context.getSqlSessionFactory() == null) {
+        if (context.sqlSessionFactory() == null) {
             return violations;
         }
 
-        Configuration cfg = context.getSqlSessionFactory().getConfiguration();
+        Configuration cfg = context.sqlSessionFactory().getConfiguration();
         Set<String> processedIds = new HashSet<>();
 
         for (MappedStatement ms : cfg.getMappedStatements()) {

@@ -23,12 +23,12 @@ public class BoundSqlGenerationRule implements Rule {
 
         List<RuleViolation> violations = new ArrayList<>();
 
-        if (context.getSqlSessionFactory() == null) {
+        if (context.sqlSessionFactory() == null) {
             // MyBatis 없는 프로젝트 >> skip
             return violations;
         }
 
-        Configuration cfg = context.getSqlSessionFactory().getConfiguration();
+        Configuration cfg = context.sqlSessionFactory().getConfiguration();
 
         Map<String, Object> param = SqlParamFactory.createDefault();
 

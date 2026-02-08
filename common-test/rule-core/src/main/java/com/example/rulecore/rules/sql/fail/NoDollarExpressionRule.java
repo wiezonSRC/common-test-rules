@@ -20,7 +20,7 @@ public class NoDollarExpressionRule implements Rule {
 
         List<RuleViolation> violations = new ArrayList<>();
 
-        for (Path mapperDir : context.getMapperDirs()) {
+        for (Path mapperDir : context.mapperDirs()) {
             if (!Files.exists(mapperDir)) {
                 continue;
             }

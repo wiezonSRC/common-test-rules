@@ -6,10 +6,16 @@ import com.example.rulecore.rules.sql.fail.NoDollarExpressionRule;
 import com.example.rulecore.rules.java.fail.TransactionalSwallowExceptionRule;
 import com.example.rulecore.rules.style.warn.JavaNamingRule;
 import com.example.rulecore.rules.style.fail.SqlStyleRule;
+import lombok.Getter;
 
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * 관련 있는 규칙들을 논리적인 그룹으로 묶어 관리하는 Enum입니다.
+ * Composite 패턴의 아이디어를 활용하여 여러 규칙을 하나의 단위로 다룰 수 있게 합니다.
+ */
+@Getter
 public enum RuleGroups {
 
     /**
@@ -31,7 +37,7 @@ public enum RuleGroups {
     ),
 
     /**
-     * 모든 규칙 실행
+     * 프로젝트의 모든 규칙을 실행하는 그룹
      */
     ALL(
             new JavaNamingRule(),
@@ -42,13 +48,14 @@ public enum RuleGroups {
             new SqlStyleRule()
     );
 
+    /**
+     * -- GETTER --
+     *  그룹에 포함된 모든 규칙 목록을 반환합니다.
+     */
     private final List<Rule> rules;
 
     RuleGroups(Rule... rules) {
         this.rules = Arrays.asList(rules);
     }
 
-    public List<Rule> getRules() {
-        return rules;
-    }
 }

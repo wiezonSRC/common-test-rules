@@ -28,8 +28,8 @@ public class SelectExplainRule implements Rule {
 
         List<RuleViolation> violations = new ArrayList<>();
 
-        DataSource dataSource = context.getDataSource();
-        Configuration cfg = context.getSqlSessionFactory().getConfiguration();
+        DataSource dataSource = context.dataSource();
+        Configuration cfg = context.sqlSessionFactory().getConfiguration();
 
         if (dataSource == null) {
             violations.add(new RuleViolation(

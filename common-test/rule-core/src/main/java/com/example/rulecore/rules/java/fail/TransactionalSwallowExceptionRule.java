@@ -21,7 +21,7 @@ public class TransactionalSwallowExceptionRule implements Rule {
 
         List<RuleViolation> violations = new ArrayList<>();
 
-        String basePackage = context.getBasePackage();
+        String basePackage = context.basePackage();
 
         for (Class<?> serviceClass : scanServiceClasses(basePackage)) {
 
