@@ -10,7 +10,7 @@ public class TransactionTestService {
 
     private int Bad_Name; // JavaNamingRule 위반 유발
     @Autowired
-    private DummyMapper testMapper;
+    private TestMapper testMapper;
 
     public void run(){
         try{

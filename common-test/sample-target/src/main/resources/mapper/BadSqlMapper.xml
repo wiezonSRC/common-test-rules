@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rule.commontest.sample.BadSqlMapper">
+
+    <select id="findBadSql" resultType="map">
+        SELECT *, (SELECT count(*) FROM TB_LOG) as log_count
+        FROM TB_USER u, TB_DEPT d
+        WHERE u.dept_id = d.id
+        AND u.status = ${status}
+        AND u.age &lt; 30
+    </select>
+
+    <!-- [FAIL] MyBatisXmlRule: <if>는 <where>나 <set> 내부에 있어야 함 -->
+    <select id="invalidIfScope" resultType="map">
+        SELECT * FROM TB_USER
+        <if test="name != null">
+            WHERE name = #{name}
+        </if>
+    </select>
+
+    <select id="badWithClause" resultType="map">
+        WITH BadAliasCTE AS (
+            SELECT id FROM TB_USER
+        )
+        SELECT * FROM BadAliasCTE
+    </select>
+
+</mapper>
