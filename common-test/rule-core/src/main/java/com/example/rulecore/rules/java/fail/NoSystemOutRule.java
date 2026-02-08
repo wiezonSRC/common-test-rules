@@ -1,0 +1,15 @@
+package com.example.rulecore.rules.java.fail;
+
+import com.example.rulecore.rules.ArchUnitBasedRule;
+import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
+
+public class NoSystemOutRule extends ArchUnitBasedRule {
+
+    @Override
+    protected ArchRule getDefinition() {
+        return ArchRuleDefinition.noClasses()
+                .should().accessClassesThat().belongToAnyOf(System.class)
+                .as("NO System.out/err usage");
+    }
+}
