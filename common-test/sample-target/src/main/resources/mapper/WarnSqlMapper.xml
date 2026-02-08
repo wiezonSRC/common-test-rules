@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rule.commontest.sample.WarnSqlMapper">
+
+    <select id="findWithBadAlias" resultType="map">
+        /* 1. [WARN] SqlAdvancedStyleRule: 테이블명과 관련 없는 별칭 (x) */
+        /* 2. [WARN] SqlAdvancedStyleRule: 서브쿼리 별칭 접미사 (_agg, _grp) 누락 */
+        SELECT x.id, sub.cnt
+        FROM TB_USER x
+        JOIN (
+            SELECT user_id, count(*) as cnt 
+            FROM TB_LOG 
+            GROUP BY user_id
+        ) sub ON x.id = sub.user_id
+    </select>
+
+    <select id="findWithDeepNesting" resultType="map">
+        /* 3. [WARN] SqlAdvancedStyleRule: 중첩 서브쿼리 깊이 초과 (Depth > 2) */
+        SELECT *
+        FROM (
+            SELECT *
+            FROM (
+                SELECT *
+                FROM (
+                    SELECT id FROM TB_USER
+                ) d3
+            ) d2
+        ) d1
+    </select>
+
+    <select id="findWithFullScan" resultType="map">
+        /* 4. [WARN] SelectExplainRule: 인덱스 없이 ORDER BY 사용 (Using filesort 예상) */
+        /* 5. [WARN] SelectExplainRule: 조건 없는 전체 조회 (type=ALL 예상) */
+        SELECT id, name, age
+        FROM TB_USER
+        ORDER BY age DESC
+    </select>
+
+</mapper>
