@@ -17,7 +17,7 @@ public class Report {
     public void createWarnReport(List<RuleViolation> warnList){
         try {
             Path path = Path.of(exportWarnPath);
-            Files.write(path, objectMapper.writeValueAsString(warnList).getBytes());
+            Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(warnList).getBytes());
         } catch (IOException e){
             e.printStackTrace();
         }
@@ -26,7 +26,7 @@ public class Report {
     public void createFailReport(List<RuleViolation> failList){
         try{
             Path path = Path.of(exportFailPath);
-            Files.write(path, objectMapper.writeValueAsString(failList).getBytes());
+            Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(failList).getBytes());
             throw new AssertionError("Fail exists : size (" + failList.size() +"). \n Please Check fail-report.json");
         } catch (IOException e) {
             e.printStackTrace();
