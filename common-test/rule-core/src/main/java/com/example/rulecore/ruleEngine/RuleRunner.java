@@ -18,8 +18,8 @@ public class RuleRunner {
 
     public void runOrFail(RuleContext context) {
         List<RuleViolation> violations = run(context);
-        report.createFailReport(violations.stream().filter( violation -> violation.getStatus() == Status.FAIL).toList());
-        report.createWarnReport(violations.stream().filter( violation -> violation.getStatus() == Status.WARN).toList());
+        report.createFailReport(violations.stream().filter( violation -> violation.status() == Status.FAIL).toList());
+        report.createWarnReport(violations.stream().filter( violation -> violation.status() == Status.WARN).toList());
     }
 
     public List<RuleViolation> run(RuleContext context) {
