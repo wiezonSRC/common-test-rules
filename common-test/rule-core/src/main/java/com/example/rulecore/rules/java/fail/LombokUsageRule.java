@@ -12,6 +12,6 @@ public class LombokUsageRule extends ArchUnitBasedRule {
         return ArchRuleDefinition.noClasses()
                 .should().callMethod(LoggerFactory.class, "getLogger", Class.class)
                 .orShould().callMethod(LoggerFactory.class, "getLogger", String.class)
-                .as("Avoid direct usage of LoggerFactory.getLogger(). Use Lombok @Slf4j annotation instead.");
+                .as("getLogger() 대신해서, @Slf4j lombok 을 사용한다.");
     }
 }

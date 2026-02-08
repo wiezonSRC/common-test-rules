@@ -87,7 +87,7 @@ public class TransactionalSwallowExceptionRule implements Rule {
                     violations.add(new RuleViolation(
                             "TransactionalSwallowExceptionRule",
                             Status.FAIL,
-                            "@Transactional method swallows exception with catch + return",
+                            " catch + return 으로 인해, 정상적으로 @Transactional 이 되지않음. ",
                             clazz.getName() + "." + method.name
                     ));
                 }

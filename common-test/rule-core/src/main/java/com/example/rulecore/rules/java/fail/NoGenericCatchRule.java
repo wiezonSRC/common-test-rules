@@ -52,7 +52,7 @@ public class NoGenericCatchRule implements Rule {
                 classes.add(Class.forName(beanDef.getBeanClassName()));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         return classes;
     }
@@ -72,7 +72,7 @@ public class NoGenericCatchRule implements Rule {
                         violations.add(new RuleViolation(
                                 "NoGenericCatchRule",
                                 Status.FAIL,
-                                "Avoid catching generic exceptions (" + tryCatch.type.replace("/", ".") + "). Catch specific exceptions instead.",
+                                "일반적인 Exception 대신해서 특정 예외를 처리. ( 일반적인 예외 : " + tryCatch.type.replace("/", ".") + ")",
                                 clazz.getName() + "." + method.name
                         ));
                     }

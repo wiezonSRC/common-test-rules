@@ -10,6 +10,6 @@ public class NoSystemOutRule extends ArchUnitBasedRule {
     protected ArchRule getDefinition() {
         return ArchRuleDefinition.noClasses()
                 .should().accessClassesThat().belongToAnyOf(System.class)
-                .as("NO System.out/err usage");
+                .as(" System.out 일반 출력 금지 ");
     }
 }

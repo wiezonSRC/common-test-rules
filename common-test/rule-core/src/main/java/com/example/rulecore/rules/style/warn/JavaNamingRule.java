@@ -14,12 +14,12 @@ public class JavaNamingRule extends ArchUnitBasedRule {
         ArchRule pascalRule = ArchRuleDefinition.classes()
                 .that().areNotAnonymousClasses()
                 .should().haveNameMatching(".*\\.[A-Z][a-zA-Z0-9$]*$")
-                .as("Classes should be PascalCase");
+                .as("클래스는 PascalCase 사용");
         
         ArchRule serviceSuffixRule = ArchRuleDefinition.classes()
                 .that().areAnnotatedWith(Service.class)
                 .should().haveSimpleNameEndingWith("Service")
-                .as("Service classes should end with 'Service'");
+                .as("서비스 클래스는 'service' 접미사 사용");
 
         // 1.3 인터페이스 (Interfaces): PascalCase, 'I' 접두사 지양
         ArchRule interfaceRule = ArchRuleDefinition.classes()
@@ -27,28 +27,28 @@ public class JavaNamingRule extends ArchUnitBasedRule {
                 .should().haveNameMatching(".*\\.[A-Z][a-zA-Z0-9]*$")
                 .andShould().haveNameMatching(".*\\.(?!I[A-Z])[a-zA-Z0-9]*$")
                 .allowEmptyShould(true)
-                .as("Interfaces should be PascalCase and not start with 'I'");
+                .as("인터페이스는 PascalCase 사용, 접두엇 'I' 사용 x");
 
         // 1.4 메소드 (Methods): camelCase
         ArchRule methodRule = ArchRuleDefinition.methods()
                 // .that().areNotAnnotatedWith(Test.class) // 라이브러리에서는 Test 어노테이션 의존성 없으므로 이름 패턴으로 제외하거나 생략
                 .should().haveNameMatching("^[a-z][a-zA-Z0-9]*$")
                 .allowEmptyShould(true)
-                .as("Methods should be camelCase");
+                .as("메서드 이름은 camelCase 사용");
 
         // 1.5 변수 (Variables - Fields): camelCase
         ArchRule fieldRule = ArchRuleDefinition.fields()
                 .that().areNotStatic().or().areNotFinal()
                 .should().haveNameMatching("^[a-z][a-zA-Z0-9$]*$")
                 .allowEmptyShould(true)
-                .as("Fields should be camelCase");
+                .as("필드명 camelCase 사용");
 
         // 1.6 상수 (Constants): static final은 SNAKE_CASE
         ArchRule constantRule = ArchRuleDefinition.fields()
                 .that().areStatic().and().areFinal()
                 .should().haveNameMatching("^[A-Z][A-Z0-9_]*$")
                 .allowEmptyShould(true)
-                .as("Constants should be SNAKE_CASE");
+                .as("상수는 대문자 SNAKE_CASE 사용");
 
         return CompositeArchRule.of(pascalRule)
                 .and(serviceSuffixRule)

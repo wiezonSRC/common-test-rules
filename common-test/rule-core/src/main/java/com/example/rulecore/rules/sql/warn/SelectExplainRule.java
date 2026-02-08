@@ -74,7 +74,7 @@ public class SelectExplainRule implements Rule {
                             violations.add(new RuleViolation(
                                     RULE_NAME,
                                     Status.WARN,
-                                    "Full Table Scan detected (type=ALL) on table '" + table + "'. Check indexing.",
+                                    "Full 테이블 스캔 대상 (type=ALL) '" + table + "'. Check indexing.",
                                     ms.getId()
                             ));
                         }
@@ -83,7 +83,7 @@ public class SelectExplainRule implements Rule {
                             violations.add(new RuleViolation(
                                     RULE_NAME,
                                     Status.WARN,
-                                    "File Sort detected (Using filesort) on table '" + table + "'. Consider index for sorting.",
+                                    "File Sort 감지 (Using filesort) :  '" + table + "'. 인덱스 고려 필요.",
                                     ms.getId()
                             ));
                         }

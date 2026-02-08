@@ -14,6 +14,6 @@ public class JavaConstantsRule extends ArchUnitBasedRule {
                 .and().areStatic()
                 .should().beFinal()
                 .allowEmptyShould(true)
-                .as("Public static fields must be final (constants only)");
+                .as("public static 필드는 final 이어야 한다.");
     }
 }

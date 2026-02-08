@@ -45,6 +45,7 @@ public class SqlBasicPerformanceRule implements Rule {
                 String sql = bs.getSql();
                 Statement stmt = CCJSqlParserUtil.parse(sql);
 
+                //FIXME) Where 절 안에 서브쿼리 방지 추가 구현 필요
                 if (stmt instanceof Select) {
                     Select select = (Select) stmt;
                     if (select.getSelectBody() instanceof PlainSelect) {
@@ -66,7 +67,7 @@ public class SqlBasicPerformanceRule implements Rule {
                 violations.add(new RuleViolation(
                         RULE_NAME,
                         Status.FAIL,
-                        "Scalar subqueries in SELECT clause are forbidden due to performance risks (N+1). Use JOIN instead.",
+                        "Scalar subquery 존재. JOIN 사용 권고.",
                         queryId
                 ));
             }

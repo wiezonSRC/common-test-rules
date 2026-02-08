@@ -59,7 +59,7 @@ public class SqlAdvancedStyleRule implements Rule {
             violations.add(new RuleViolation(
                     RULE_NAME,
                     Status.WARN,
-                    "Nested subquery depth " + depth + " exceeds limit (2). Simplify query.",
+                    "중첨된 서브쿼리 개수 :  " + depth + " depth 가 2 초과하므로 쿼리수정 권고.",
                     queryId
             ));
         }
@@ -98,6 +98,7 @@ public class SqlAdvancedStyleRule implements Rule {
             ParenthesedSelect subSelect = (ParenthesedSelect) item;
             
             // 서브쿼리 별칭 규칙: _agg, _grp 접미사 권장
+            // FIXME) 접미사 추가 (지정 필요)
             if (subSelect.getAlias() != null) {
                 String alias = subSelect.getAlias().getName();
                 if (!alias.endsWith("_agg") && !alias.endsWith("_grp")) {

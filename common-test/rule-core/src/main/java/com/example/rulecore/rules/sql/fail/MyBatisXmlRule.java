@@ -54,7 +54,7 @@ public class MyBatisXmlRule implements Rule {
                     violations.add(new RuleViolation(
                             "MyBatisXmlRule",
                             Status.FAIL,
-                            "Use <![CDATA[ ... ]]> instead of escaped entities (&lt;, &gt;) for readability.",
+                            "<![CDATA[ ... ]]> 를 사용해라  (* (&lt;, &gt;) 오류 발생 가능성 높음)",
                             fileName + ":" + (i + 1)
                     ));
                 }
@@ -112,7 +112,7 @@ public class MyBatisXmlRule implements Rule {
             violations.add(new RuleViolation(
                     "MyBatisXmlRule",
                     Status.FAIL,
-                    "<if> tag should be wrapped in <where>, <set>, <trim> or <foreach> to prevent SQL syntax errors.",
+                    "<if> 태그 사용시 mapper 의 <where>, <set>, <trim> or <foreach> 를 사용해서 SQL Error 를 방지",
                     fileName + " (Tag: " + ifElement.getAttribute("test") + ")"
             ));
         }

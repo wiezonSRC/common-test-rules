@@ -91,7 +91,7 @@ public class SqlStyleRule implements Rule {
                          violations.add(new RuleViolation(
                             RULE_NAME,
                             Status.FAIL,
-                            "WITH clause alias '" + alias + "' should be in snake_case (lowercase).",
+                            "WITH 절 : '" + alias + "' snake_case 사용 권고 (소문자).",
                             queryId
                         ));
                     }
@@ -112,7 +112,7 @@ public class SqlStyleRule implements Rule {
                 violations.add(new RuleViolation(
                         RULE_NAME,
                         Status.FAIL,
-                        "Avoid using 'SELECT *'. Specify columns explicitly.",
+                        "'SELECT *'. 사용 불가.",
                         queryId
                 ));
             }
@@ -126,7 +126,7 @@ public class SqlStyleRule implements Rule {
                      violations.add(new RuleViolation(
                         RULE_NAME,
                         Status.FAIL,
-                        "Avoid implicit joins (comma join). Use explicit INNER/OUTER JOIN with ON clause.",
+                        "암시적 join 금지 (comma join). INNER/OUTER JOIN 사용.",
                         queryId
                 ));
                 }

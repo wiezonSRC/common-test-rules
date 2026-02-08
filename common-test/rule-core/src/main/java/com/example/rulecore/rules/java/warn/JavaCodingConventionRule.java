@@ -29,14 +29,15 @@ public class JavaCodingConventionRule extends ArchUnitBasedRule {
                         String name = field.getName();
                         if (name.length() < 3 && !allowedShortNames.contains(name.toLowerCase())) {
                             events.add(SimpleConditionEvent.violated(field,
-                                    "Field '" + name + "' is too short. Use descriptive names (>= 3 chars)."));
+                                    "Field :'" + name + "' 을 길게 작성해주세요. (>= 3 chars)."));
                         }
                     }
                 })
                 .allowEmptyShould(true)
-                .as("Field names should be descriptive (>= 3 chars)");
+                .as("필드 명명은 3글자 이상이어야 합니다. (>= 3 chars)");
 
         // 2. 메서드 파라미터 final 권장 (불변성)
+        //FIXME) 불변성 체크 로직 확인 필요
         ArchRule finalParamRule = ArchRuleDefinition.methods()
                 .should(new ArchCondition<>("have final parameters") {
                     @Override
@@ -62,6 +63,7 @@ public class JavaCodingConventionRule extends ArchUnitBasedRule {
 
         // 3. ENUM 사용 권장 (단순 String 상수로 상태 관리하는 것 지양)
         // -> 상수로 "STATUS_" 등으로 시작하는 String들이 많으면 경고?
+        //FIXME) enum 으로 바꾸어야하는 경우 확인 필요
         ArchRule stringConstantRule = ArchRuleDefinition.fields()
                 .that().areStatic().and().areFinal()
                 .and().haveRawType(String.class)

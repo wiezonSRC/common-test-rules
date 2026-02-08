@@ -12,6 +12,6 @@ public class NoFieldInjectionRule extends ArchUnitBasedRule {
         return ArchRuleDefinition.noFields()
                 .should().beAnnotatedWith(Autowired.class)
                 .allowEmptyShould(true)
-                .as("NO Field Injection (@Autowired on field)");
+                .as(" 멤버필드에는 @Autowired 를 사용하지 않는다. ");
     }
 }
