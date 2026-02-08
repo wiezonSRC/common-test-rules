@@ -22,20 +22,88 @@ Spring Boot 및 MyBatis 환경에서 동작하도록 설계되었으며, JUnit �
 4.  **리포팅 엔진 (Reporting Engine)**
     *   검사 결과는 콘솔뿐만 아니라 `json` 파일로 저장되어, 외부 시스템(CI 도구 등)에서 결과를 파싱하기 용이하도록 설계되었습니다.
 
+## 🛠 Gradle Plugin 관리 및 배포
+
+Rule Core는 단순한 라이브러리를 넘어, 프로젝트 전반의 표준을 강제하고 자동화하기 위해 **Gradle Plugin** 형태로 제공됩니다.
+
+### 1. Plugin 도입 배경 (Introduction Background)
+*   **표준화 (Standardization):** 각 프로젝트마다 서로 다른 코드 스타일 설정을 방지하고, 전사 공통 표준을 단 한 줄의 설정으로 강제합니다.
+*   **자동화 (Automation):** ArchUnit을 통한 논리적 검증뿐만 아니라, Spotless를 이용한 물리적 코드 포맷팅(들여쓰기, 줄바꿈, SQL 대문자 등)을 자동화합니다.
+*   **유지보수성 (Maintenance):** 새로운 규칙이 추가되거나 기존 규칙이 변경될 때, 각 프로젝트의 설정을 수정할 필요 없이 플러그인 버전 업데이트만으로 일괄 적용이 가능합니다.
+
+### 2. Plugin 관리 방식 (Management Method)
+플러그인은 다음과 같은 기능을 수행합니다.
+*   **Spotless 통합 관리:** `com.diffplug.spotless` 플러그인을 내장하여 Java(Google Style) 및 XML/SQL 포맷팅 룰을 주입합니다.
+*   **SQL 자동 변환:** MyBatis XML 내의 SQL 예약어(SELECT, FROM 등)를 자동으로 대문자로 변환하는 커스텀 룰을 포함합니다.
+*   **의존성 관리:** 향후 ArchUnit 등 규칙 실행에 필요한 필수 라이브러리들을 플러그인 적용 시 자동으로 프로젝트에 포함시키도록 확장 가능합니다.
+
+### 3. 배포 절차 (Deployment Procedure)
+
+#### 로컬 테스트 배포
+개발 중인 플러그인을 로컬 환경에서 테스트하려면 아래 명령어를 실행합니다.
+```bash
+# rule-core 프로젝트 루트에서 실행
+./gradlew :rule-core:publishToMavenLocal
+```
+이 명령은 로컬 Maven 저장소(`~/.m2/repository`)에 플러그인을 배포합니다.
+
+#### 프로젝트 적용 방법
+플러그인을 적용할 프로젝트의 `build.gradle`에 다음과 같이 선언합니다.
+
+```groovy
+// settings.gradle
+pluginManagement {
+    repositories {
+        mavenLocal() // 로컬 테스트 시 필수
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+// build.gradle
+plugins {
+    id "com.company.rule-core" version "0.1.1"
+}
+```
+
 ---
 
 ## 🚀 시작하기
 
-### 1. 의존성 추가
-이 모듈은 테스트 스코프에서 사용됩니다. (Gradle 예시)
+### 1. 플러그인 적용 (Apply Plugin)
 
+이 도구는 Gradle 플러그인 형태로 제공됩니다. `settings.gradle`과 `build.gradle`에 아래 설정을 추가하세요.
+
+**settings.gradle**
 ```groovy
-testImplementation project(':rule-core')
-// 또는 라이브러리로 배포된 경우
-// testImplementation 'com.example:rule-core:0.0.1'
+pluginManagement {
+    repositories {
+        mavenLocal() // 개발/테스트 시
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
 ```
 
-### 2. 테스트 코드 작성 (Usage)
+**build.gradle**
+```groovy
+plugins {
+    id "com.company.rule-core" version "0.1.2"
+}
+```
+
+### 2. 플러그인 설정 (Configuration)
+
+플러그인의 기능을 커스텀할 수 있습니다. 예를 들어, 자동 포맷팅(Spotless) 기능을 끄고 싶을 경우 아래와 같이 설정합니다.
+
+```groovy
+ruleCore {
+    // 자동 포맷팅 기능을 활성화할지 여부 (기본값: true)
+    enableFormatter = false 
+}
+```
+
+### 3. 테스트 코드 작성 (Usage)
 통합 테스트(`@SpringBootTest`) 내에서 `RuleRunner`를 실행하여 프로젝트 전체를 검사합니다.
 
 ```java
