@@ -31,7 +31,7 @@ public class Report {
 
             Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(warnList).getBytes());
 
-            System.out.println(
+            System.err.println(
                     "[WARN] " + warnList.size() +
                             " rule violations detected. Report written to: " +
                             path.toAbsolutePath().toUri()

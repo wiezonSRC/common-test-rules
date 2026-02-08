@@ -32,8 +32,11 @@ public class RuleRunner {
     public void runOrFail(RuleContext context) {
         List<RuleViolation> violations = run(context);
         // 결과에 따라 FAIL과 WARN 리포트를 각각 생성
-        report.createFailReport(violations.stream().filter( violation -> violation.status() == Status.FAIL).toList());
-        report.createWarnReport(violations.stream().filter( violation -> violation.status() == Status.WARN).toList());
+        try{
+            report.createFailReport(violations.stream().filter( violation -> violation.status() == Status.FAIL).toList());
+        }finally {
+            report.createWarnReport(violations.stream().filter( violation -> violation.status() == Status.WARN).toList());
+        }
     }
 
     /**
