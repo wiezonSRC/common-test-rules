@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class TransactionTestService {
 
+    private int Bad_Name; // JavaNamingRule 위반 유발
     private DummyMapper testMapper;
 
     public void run(){

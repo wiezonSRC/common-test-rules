@@ -28,12 +28,9 @@
         WHERE ID = #{id}
     </delete>
 
-<!--    <delete id="deleteTest">-->
-<!--        DELETE FROM TB_USER-->
-<!--        WHERE ID IN-->
-<!--        <foreach collection="idList" item="id" open="(" close=")" separator=",">-->
-<!--            #{id}-->
-<!--        </foreach>-->
-<!--    </delete>-->
-
+    <select id="selectBadPattern" resultType="map">
+        SELECT *
+        FROM TBSI_TEST, TB_USER
+        WHERE TBSI_TEST.ID = TB_USER.ID
+    </select>
 </mapper>
