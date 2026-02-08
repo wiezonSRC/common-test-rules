@@ -1,6 +1,5 @@
 plugins {
     id "java"
-    id "com.example.simple-rule"
 }
 
 repositories {
@@ -11,13 +10,6 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
     }
-}
-
-ruleGate {
-    basePackage = "com.rule.commontest"
-    mapperDirs = [
-            "src/main/resources/mapper"
-    ]
 }
 
 dependencies {
@@ -34,10 +26,7 @@ dependencies {
 
     // ===== 테스트 =====
     testImplementation(project(":rule-core"))
-
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0' // ArchUnit 추가
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
