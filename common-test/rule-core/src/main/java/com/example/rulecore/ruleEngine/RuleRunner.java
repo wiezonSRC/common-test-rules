@@ -57,7 +57,8 @@ public class RuleRunner {
                         rule.getClass().getSimpleName(),
                         Status.FAIL,
                         "Exception during rule execution: " + e.getMessage(),
-                        ""
+                        "",
+                        0
                 ));
             }
         }

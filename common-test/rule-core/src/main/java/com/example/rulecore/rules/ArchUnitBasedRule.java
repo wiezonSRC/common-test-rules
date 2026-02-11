@@ -7,8 +7,10 @@ import com.example.rulecore.util.Status;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.FailureReport;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -39,17 +41,51 @@ public abstract class ArchUnitBasedRule implements Rule {
     public List<RuleViolation> check(RuleContext context) {
         List<RuleViolation> violations = new ArrayList<>();
 
-        // Context의 basePackage를 기준으로 클래스 임포트
-        // 성능 최적화를 위해 캐싱 고려 가능하지만, 지금은 단순하게 매번 임포트
-        JavaClasses classes = new ClassFileImporter()
-                .importPackages(context.basePackage());
+        JavaClasses classes;
+        if (context.hasAffectedFiles()) {
+            // 변경된 파일만 대상으로 임포트 (증분 검사)
+            // .java 파일 경로를 ArchUnit이 인식할 수 있는 형태로 변환하거나
+            // 프로젝트 루트에서 해당 파일들만 필터링하여 임포트
+            classes = new ClassFileImporter()
+                    .importPaths(context.affectedFiles());
+        } else {
+            // 전체 패키지 대상 (전수 검사)
+            classes = new ClassFileImporter()
+                    .importPackages(context.basePackage());
+        }
 
-        getDefinition().evaluate(classes).getFailureReport().getDetails().forEach(failure -> {
+        if (classes.isEmpty()) {
+            return violations;
+        }
+
+        FailureReport failureReport = getDefinition().evaluate(classes).getFailureReport();
+
+        failureReport.getDetails().forEach(event -> {
+            // ArchUnit 이벤트 메시지에서 (FileName.java:Line) 패턴을 추출하거나 전체 메시지 사용
+            String filePath = null;
+            Integer lineNumber = null;
+
+            // 소스 위치 정보가 있는 경우 추출 시도 (간단한 파싱)
+            // 보통 "in (FileName.java:10)" 형태를 가짐
+            if (event.contains("(") && event.contains(")")) {
+                try {
+                    String locationPart = event.substring(event.lastIndexOf("(") + 1, event.lastIndexOf(")"));
+                    if (locationPart.contains(":")) {
+                        String[] parts = locationPart.split(":");
+                        filePath = parts[0].trim();
+                        lineNumber = Integer.parseInt(parts[1].trim());
+                    }
+                } catch (Exception ignored) {
+                    // 파싱 실패 시 기본값 유지
+                }
+            }
+
             violations.add(new RuleViolation(
                     getName(),
                     Status.WARN,
-                    failure, // ArchUnit의 상세 실패 메시지
-                    "" // 위치 정보는 메시지에 포함되어 있음
+                    event,
+                    filePath,
+                    lineNumber
             ));
         });
 

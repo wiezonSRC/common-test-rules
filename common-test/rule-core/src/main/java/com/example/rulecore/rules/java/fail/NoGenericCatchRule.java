@@ -19,6 +19,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static com.example.rulecore.util.CommonUtils.findFirstLineNumber;
+import static com.example.rulecore.util.CommonUtils.resolveSourcePath;
+
 public class NoGenericCatchRule implements Rule {
 
     private static final Set<String> FORBIDDEN_EXCEPTIONS = Set.of(
@@ -73,7 +76,8 @@ public class NoGenericCatchRule implements Rule {
                                 "NoGenericCatchRule",
                                 Status.FAIL,
                                 "일반적인 Exception 대신해서 특정 예외를 처리. ( 일반적인 예외 : " + tryCatch.type.replace("/", ".") + ")",
-                                clazz.getName() + "." + method.name
+                                resolveSourcePath(clazz),
+                                findFirstLineNumber(method)
                         ));
                     }
                 }

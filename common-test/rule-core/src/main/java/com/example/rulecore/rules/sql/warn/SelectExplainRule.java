@@ -37,7 +37,8 @@ public class SelectExplainRule implements Rule {
                     RULE_NAME,
                     Status.FAIL,
                     "DataSource not available (EXPLAIN skipped)",
-                    ""
+                    "",
+                    0
             ));
             return violations;
         }
@@ -75,7 +76,8 @@ public class SelectExplainRule implements Rule {
                                     RULE_NAME,
                                     Status.WARN,
                                     "Full 테이블 스캔 대상 (type=ALL) '" + table + "'. Check indexing.",
-                                    ms.getId()
+                                    ms.getId(),
+                                    0
                             ));
                         }
 
@@ -84,7 +86,8 @@ public class SelectExplainRule implements Rule {
                                     RULE_NAME,
                                     Status.WARN,
                                     "File Sort 감지 (Using filesort) :  '" + table + "'. 인덱스 고려 필요.",
-                                    ms.getId()
+                                    ms.getId(),
+                                    0
                             ));
                         }
                     }
@@ -94,7 +97,8 @@ public class SelectExplainRule implements Rule {
                             RULE_NAME,
                             Status.WARN,
                             "EXPLAIN failed: " + e.getMessage(),
-                            ms.getId()
+                            ms.getId(),
+                            0
                     ));
                 }
             }
@@ -104,7 +108,8 @@ public class SelectExplainRule implements Rule {
                     RULE_NAME,
                     Status.WARN,
                     "DB connection failed: " + e.getMessage(),
-                    ""
+                    "",
+                    0
             ));
         }
 

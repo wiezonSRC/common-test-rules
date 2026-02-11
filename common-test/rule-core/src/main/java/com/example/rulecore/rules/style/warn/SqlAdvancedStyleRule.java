@@ -60,7 +60,8 @@ public class SqlAdvancedStyleRule implements Rule {
                     RULE_NAME,
                     Status.WARN,
                     "중첨된 서브쿼리 개수 :  " + depth + " depth 가 2 초과하므로 쿼리수정 권고.",
-                    queryId
+                    queryId,
+                    0
             ));
         }
 
@@ -90,7 +91,8 @@ public class SqlAdvancedStyleRule implements Rule {
                             RULE_NAME,
                             Status.WARN,
                             "Table alias '" + alias + "' for '" + tableName + "' does not follow convention (e.g. TB_USER_LOG -> tul).",
-                            queryId
+                            queryId,
+                            0
                     ));
                 }
             }
@@ -106,7 +108,8 @@ public class SqlAdvancedStyleRule implements Rule {
                             RULE_NAME,
                             Status.WARN,
                             "Subquery alias '" + alias + "' should end with '_agg' or '_grp'.",
-                            queryId
+                            queryId,
+                            0
                     ));
                 }
             }

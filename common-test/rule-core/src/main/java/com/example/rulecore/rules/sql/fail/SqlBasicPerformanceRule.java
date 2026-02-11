@@ -67,8 +67,9 @@ public class SqlBasicPerformanceRule implements Rule {
                 violations.add(new RuleViolation(
                         RULE_NAME,
                         Status.FAIL,
-                        "Scalar subquery 존재. JOIN 사용 권고.",
-                        queryId
+                        "Scalar subquery 존재. JOIN 사용 권고." + "( " +queryId + " )",
+                        queryId,
+                        0
                 ));
             }
         }

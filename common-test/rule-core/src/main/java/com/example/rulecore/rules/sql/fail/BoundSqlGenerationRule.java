@@ -55,7 +55,8 @@ public class BoundSqlGenerationRule implements Rule {
                             RULE_NAME,
                             Status.FAIL,
                             "BoundSql is null",
-                            ms.getId()
+                            ms.getId(),
+                            0
                     ));
                 }
 
@@ -65,7 +66,8 @@ public class BoundSqlGenerationRule implements Rule {
                         RULE_NAME,
                         Status.FAIL,
                         "BoundSql generation failed: " + e.getMessage(),
-                        ms.getId()
+                        ms.getId(),
+                        0
                 ));
             }
         }

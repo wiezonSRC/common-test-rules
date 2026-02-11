@@ -92,7 +92,8 @@ public class SqlStyleRule implements Rule {
                             RULE_NAME,
                             Status.FAIL,
                             "WITH 절 : '" + alias + "' snake_case 사용 권고 (소문자).",
-                            queryId
+                            queryId,
+                                 0
                         ));
                     }
                 }
@@ -113,7 +114,8 @@ public class SqlStyleRule implements Rule {
                         RULE_NAME,
                         Status.FAIL,
                         "'SELECT *'. 사용 불가.",
-                        queryId
+                        queryId,
+                        0
                 ));
             }
         }
@@ -127,7 +129,8 @@ public class SqlStyleRule implements Rule {
                         RULE_NAME,
                         Status.FAIL,
                         "암시적 join 금지 (comma join). INNER/OUTER JOIN 사용.",
-                        queryId
+                        queryId,
+                             0
                 ));
                 }
             }

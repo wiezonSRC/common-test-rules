@@ -26,20 +26,17 @@ public class Report {
             return;
         }
 
+        // 콘솔에 상세 내역 출력 (IDE 링크 포함)
+        System.err.println("\n[RULE-CORE] Found " + warnList.size() + " Warnings:");
+        warnList.forEach(v -> System.err.println(v.format()));
+
         try {
             Path path = resolvePath(exportWarnPath);
-
             Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(warnList).getBytes());
-
-            System.err.println(
-                    "[WARN] " + warnList.size() +
-                            " rule violations detected. Report written to: " +
-                            path.toAbsolutePath().toUri()
-            );
+            System.err.println("[REPORT] Warn report written to: " + path.toUri() + "\n");
         } catch (IOException e){
             System.err.println("[WARN] Failed to write warn report: " + e.getMessage());
         }
-
     }
 
     /**
@@ -49,10 +46,13 @@ public class Report {
      * @param failList 실패 등급 위반 목록
      */
     public void createFailReport(List<RuleViolation> failList){
-
         if (failList.isEmpty()) {
             return;
         }
+
+        // 콘솔에 상세 내역 출력 (IDE 링크 포함)
+        System.err.println("\n[RULE-CORE] Found " + failList.size() + " Critical Failures:");
+        failList.forEach(v -> System.err.println(v.format()));
 
         Path path = resolvePath(exportFailPath);
 
@@ -62,8 +62,7 @@ public class Report {
             throw new RuntimeException(e);
         }
 
-        throw new AssertionError("Fail exists : size (" + failList.size() +"). " +
-                "\n Please Check " + path.toAbsolutePath().toUri());
+        throw new AssertionError("Rule violations found. Please check the logs above or the report: " + path.toUri());
     }
 
     private Path resolvePath(String relativePath) {

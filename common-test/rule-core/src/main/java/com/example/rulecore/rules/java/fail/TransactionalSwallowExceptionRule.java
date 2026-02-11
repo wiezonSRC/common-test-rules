@@ -14,6 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.InputStream;
 import java.util.*;
 
+import static com.example.rulecore.util.CommonUtils.findFirstLineNumber;
+import static com.example.rulecore.util.CommonUtils.resolveSourcePath;
+
 public class TransactionalSwallowExceptionRule implements Rule {
 
     @Override
@@ -84,11 +87,16 @@ public class TransactionalSwallowExceptionRule implements Rule {
                 }
 
                 if (hasCatchAndReturn(method)) {
+
+                    Integer lineNumber = findFirstLineNumber(method);
+                    String filePath = resolveSourcePath(clazz);
+
                     violations.add(new RuleViolation(
                             "TransactionalSwallowExceptionRule",
                             Status.FAIL,
                             " catch + return 으로 인해, 정상적으로 @Transactional 이 되지않음. ",
-                            clazz.getName() + "." + method.name
+                            filePath,
+                            lineNumber
                     ));
                 }
             }
@@ -126,4 +134,5 @@ public class TransactionalSwallowExceptionRule implements Rule {
                         f.getType().getName().toLowerCase().contains("mapper")
                 );
     }
+
 }

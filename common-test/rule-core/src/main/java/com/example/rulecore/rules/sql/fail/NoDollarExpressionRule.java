@@ -39,7 +39,8 @@ public class NoDollarExpressionRule implements Rule {
                             "NoDollarExpressionRule",
                             Status.FAIL,
                             "Failed to scan mapper directory (Check permissions or file locks)",
-                            mapperDir.toString()
+                            mapperDir.toString(),
+                            0
                     ));
                 }
             }
@@ -63,7 +64,8 @@ public class NoDollarExpressionRule implements Rule {
                             "NoDollarExpressionRule",
                             Status.FAIL,
                             "Suspicious ${} usage inside SQL comment",
-                            formatLocation(xml, lineNo, line)
+                            xml.toFile().getAbsolutePath(),
+                            lineNo
                     ));
                 }
                 // 실제 ${} 사용
@@ -72,7 +74,8 @@ public class NoDollarExpressionRule implements Rule {
                             "NoDollarExpressionRule",
                             Status.FAIL,
                             "Found ${} usage in mapper XML (SQL Injection risk)",
-                            formatLocation(xml, lineNo, line)
+                            xml.toFile().getAbsolutePath(),
+                            lineNo
                     ));
                 }
             }
@@ -81,7 +84,8 @@ public class NoDollarExpressionRule implements Rule {
                     "NoDollarExpressionRule",
                     Status.WARN,
                     "Failed to read mapper XML",
-                    xml.toString()
+                    xml.toFile().getAbsolutePath(),
+                    0
             ));
         }
     }

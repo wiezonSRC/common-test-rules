@@ -3,15 +3,17 @@ package com.example.rulecore.rules.sql.fail;
 import com.example.rulecore.ruleEngine.Rule;
 import com.example.rulecore.ruleEngine.RuleContext;
 import com.example.rulecore.ruleEngine.RuleViolation;
+import com.example.rulecore.rules.sql.MyBatisIfRuleHandler;
 import com.example.rulecore.util.Status;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.*;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -55,7 +57,8 @@ public class MyBatisXmlRule implements Rule {
                             "MyBatisXmlRule",
                             Status.FAIL,
                             "<![CDATA[ ... ]]> 를 사용해라  (* (&lt;, &gt;) 오류 발생 가능성 높음)",
-                            fileName + ":" + (i + 1)
+                            file.getAbsolutePath(),
+                            i+1
                     ));
                 }
             }
@@ -70,7 +73,7 @@ public class MyBatisXmlRule implements Rule {
             for (int i = 0; i < ifNodes.getLength(); i++) {
                 Node ifNode = ifNodes.item(i);
                 if (ifNode.getNodeType() == Node.ELEMENT_NODE) {
-                    checkIfScope((Element) ifNode, fileName, violations);
+                    checkIfScope((Element) ifNode, file , violations);
                 }
             }
 
@@ -80,41 +83,17 @@ public class MyBatisXmlRule implements Rule {
                     "MyBatisXmlRule",
                     Status.FAIL,
                     "XML Parsing Error: " + e.getMessage(),
-                    fileName
+                    file.getAbsolutePath(),
+                    0
             ));
         }
     }
 
-    private void checkIfScope(Element ifElement, String fileName, List<RuleViolation> violations) {
-        Node parent = ifElement.getParentNode();
-        boolean validParent = false;
+    private void checkIfScope(Element ifElement, File file,  List<RuleViolation> violations) throws ParserConfigurationException, SAXException, IOException {
+        SAXParserFactory factory = SAXParserFactory.newInstance();
+        SAXParser parser = factory.newSAXParser();
 
-        while (parent != null) {
-            if (parent.getNodeType() == Node.ELEMENT_NODE) {
-                String tagName = parent.getNodeName();
-                // <if>는 <where>, <set>, <trim>, <foreach> 내부, 혹은 다른 <if>, <choose> 내부에 있어야 안전
-                if (tagName.equals("where") || tagName.equals("set") ||
-                    tagName.equals("trim") || tagName.equals("foreach") ||
-                    tagName.equals("if") || tagName.equals("when") || tagName.equals("otherwise")) {
-                    validParent = true;
-                    break;
-                }
-                // <select>, <update> 등을 만나면 루프 종료 (invalid)
-                if (tagName.equals("select") || tagName.equals("insert") ||
-                    tagName.equals("update") || tagName.equals("delete")) {
-                    break;
-                }
-            }
-            parent = parent.getParentNode();
-        }
+        parser.parse(file, new MyBatisIfRuleHandler(file, violations));
 
-        if (!validParent) {
-            violations.add(new RuleViolation(
-                    "MyBatisXmlRule",
-                    Status.FAIL,
-                    "<if> 태그 사용시 mapper 의 <where>, <set>, <trim> or <foreach> 를 사용해서 SQL Error 를 방지",
-                    fileName + " (Tag: " + ifElement.getAttribute("test") + ")"
-            ));
-        }
     }
 }
