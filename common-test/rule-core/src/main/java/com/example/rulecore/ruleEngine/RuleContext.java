@@ -39,4 +39,51 @@ public record RuleContext(
     public boolean hasAffectedFiles() {
         return affectedFiles != null && !affectedFiles.isEmpty();
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private String basePackage;
+        private Path projectRoot;
+        private List<Path> mapperDirs = Collections.emptyList();
+        private SqlSessionFactory sqlSessionFactory;
+        private DataSource dataSource;
+        private List<Path> affectedFiles = Collections.emptyList();
+
+        public Builder basePackage(String basePackage) {
+            this.basePackage = basePackage;
+            return this;
+        }
+
+        public Builder projectRoot(Path projectRoot) {
+            this.projectRoot = projectRoot;
+            return this;
+        }
+
+        public Builder mapperDirs(List<Path> mapperDirs) {
+            this.mapperDirs = mapperDirs;
+            return this;
+        }
+
+        public Builder sqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
+            this.sqlSessionFactory = sqlSessionFactory;
+            return this;
+        }
+
+        public Builder dataSource(DataSource dataSource) {
+            this.dataSource = dataSource;
+            return this;
+        }
+
+        public Builder affectedFiles(List<Path> affectedFiles) {
+            this.affectedFiles = affectedFiles;
+            return this;
+        }
+
+        public RuleContext build() {
+            return new RuleContext(basePackage, projectRoot, mapperDirs, sqlSessionFactory, dataSource, affectedFiles);
+        }
+    }
 }

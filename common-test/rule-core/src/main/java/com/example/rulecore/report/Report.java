@@ -13,61 +13,51 @@ import java.util.List;
  */
 public class Report {
 
-    private final static String exportWarnPath = "./warn-report.json";
-    private final static String exportFailPath = "./fail-report.json";
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private Path outputDir = Path.of(".");
+
+    public Report() {}
+
+    public Report(Path outputDir) {
+        this.outputDir = outputDir;
+    }
+
+    public void setOutputDir(Path outputDir) {
+        this.outputDir = outputDir;
+    }
 
     /**
      * WARN 등급의 위반 사항들을 JSON 파일로 저장합니다.
-     * @param warnList 경고 등급 위반 목록
      */
     public void createWarnReport(List<RuleViolation> warnList){
         if(warnList.isEmpty()){
             return;
         }
 
-        // 콘솔에 상세 내역 출력 (IDE 링크 포함)
-        System.err.println("\n[RULE-CORE] Found " + warnList.size() + " Warnings:");
-        warnList.forEach(v -> System.err.println(v.format()));
-
-        try {
-            Path path = resolvePath(exportWarnPath);
-            Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(warnList).getBytes());
-            System.err.println("[REPORT] Warn report written to: " + path.toUri() + "\n");
-        } catch (IOException e){
-            System.err.println("[WARN] Failed to write warn report: " + e.getMessage());
-        }
+        saveReport(warnList, "warn-report.json");
     }
 
     /**
-     * FAIL 등급의 위반 사항들을 JSON 파일로 저장하고,
-     * 위반 내역이 존재할 경우 AssertionError를 발생시켜 테스트를 중단시킵니다.
-     * 
-     * @param failList 실패 등급 위반 목록
+     * FAIL 등급의 위반 사항들을 JSON 파일로 저장합니다.
      */
     public void createFailReport(List<RuleViolation> failList){
         if (failList.isEmpty()) {
             return;
         }
 
-        // 콘솔에 상세 내역 출력 (IDE 링크 포함)
-        System.err.println("\n[RULE-CORE] Found " + failList.size() + " Critical Failures:");
-        failList.forEach(v -> System.err.println(v.format()));
-
-        Path path = resolvePath(exportFailPath);
-
-        try{
-            Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(failList).getBytes());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        throw new AssertionError("Rule violations found. Please check the logs above or the report: " + path.toUri());
+        saveReport(failList, "fail-report.json");
     }
 
-    private Path resolvePath(String relativePath) {
-        return Path.of(relativePath)
-                .toAbsolutePath()
-                .normalize();
+    private void saveReport(List<RuleViolation> list, String fileName) {
+        try {
+            if (!Files.exists(outputDir)) {
+                Files.createDirectories(outputDir);
+            }
+            Path path = outputDir.resolve(fileName).toAbsolutePath().normalize();
+            Files.write(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(list).getBytes());
+            System.out.println("[REPORT] Report written to: " + path.toUri());
+        } catch (IOException e){
+            System.err.println("[REPORT] Failed to write report: " + e.getMessage());
+        }
     }
 }

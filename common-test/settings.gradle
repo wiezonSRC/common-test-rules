@@ -9,4 +9,5 @@ pluginManagement {
 rootProject.name = 'common-test'
 
 include 'rule-core'
+include 'rule-gradle-plugin'
 include 'sample-target'

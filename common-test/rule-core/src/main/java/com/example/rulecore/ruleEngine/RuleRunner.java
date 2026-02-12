@@ -3,6 +3,7 @@ package com.example.rulecore.ruleEngine;
 import com.example.rulecore.report.Report;
 import com.example.rulecore.util.Status;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +23,23 @@ public class RuleRunner {
         this.rules.addAll(group.getRules());
     }
 
+    /**
+     * 모든 규칙(RuleGroups.ALL)을 주어진 컨텍스트에 대해 실행하고 리포트를 생성합니다.
+     * 
+     * @param context 검사 대상 환경 정보
+     * @param outputDir 리포트 저장 경로
+     */
+    public static RuleResult run(RuleContext context, Path outputDir) {
+        RuleRunner runner = new RuleRunner(RuleGroups.ALL);
+        List<RuleViolation> violations = runner.executeRules(context);
+        
+        Report report = new Report(outputDir);
+        report.createFailReport(violations.stream().filter(v -> v.status() == Status.FAIL).toList());
+        report.createWarnReport(violations.stream().filter(v -> v.status() == Status.WARN).toList());
+        
+        return new RuleResult(violations);
+    }
+
 
     /**
      * 규칙을 실행하고 결과에 따라 리포트를 생성합니다.
@@ -30,7 +48,7 @@ public class RuleRunner {
      * @param context 검사 대상 환경 정보
      */
     public void runOrFail(RuleContext context) {
-        List<RuleViolation> violations = run(context);
+        List<RuleViolation> violations = executeRules(context);
         // 결과에 따라 FAIL과 WARN 리포트를 각각 생성
         try{
             report.createFailReport(violations.stream().filter( violation -> violation.status() == Status.FAIL).toList());
@@ -46,7 +64,7 @@ public class RuleRunner {
      * @param context 검사 대상 환경 정보
      * @return 발견된 모든 위반 사항 목록
      */
-    public List<RuleViolation> run(RuleContext context) {
+    public List<RuleViolation> executeRules(RuleContext context) {
         List<RuleViolation> all = new ArrayList<>();
 
         for (Rule rule : rules) {
