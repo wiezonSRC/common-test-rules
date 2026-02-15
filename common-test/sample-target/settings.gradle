@@ -1,6 +1,5 @@
 rootProject.name = "sample-target"
 
-
 pluginManagement {
-    includeBuild("../rule-plugin")
+    includeBuild("../rule-gradle-plugin")
 }
