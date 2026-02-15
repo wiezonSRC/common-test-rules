@@ -1,7 +1,8 @@
 package com.rule.commontest;
 
 import com.example.rulecore.ruleEngine.RuleContext;
-import com.example.rulecore.ruleEngine.enums.RuleGroups;
+
+import com.example.rulecore.ruleEngine.RuleGroups;
 import com.example.rulecore.ruleEngine.RuleRunner;
 import com.example.rulecore.ruleEngine.RuleResult;
 import org.junit.jupiter.api.DisplayName;
