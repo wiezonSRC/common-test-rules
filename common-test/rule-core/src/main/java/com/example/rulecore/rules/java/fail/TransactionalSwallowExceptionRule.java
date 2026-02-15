@@ -1,138 +1,71 @@
 package com.example.rulecore.rules.java.fail;
 
-import com.example.rulecore.ruleEngine.Rule;
-import com.example.rulecore.ruleEngine.RuleContext;
-import com.example.rulecore.ruleEngine.RuleViolation;
-import com.example.rulecore.util.Status;
-import org.objectweb.asm.*;
+import com.example.rulecore.rules.java.ArchUnitBasedRule;
+import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.lang.ArchCondition;
+import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
+import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
-import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
-import org.springframework.core.type.filter.AnnotationTypeFilter;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
-import java.util.*;
 
-import static com.example.rulecore.util.CommonUtils.findFirstLineNumber;
-import static com.example.rulecore.util.CommonUtils.resolveSourcePath;
-
-public class TransactionalSwallowExceptionRule implements Rule {
+/**
+ * @Transactional 메서드 내에서 예외를 catch하고 다시 throw하지 않는 경우를 ASM으로 정밀 분석합니다.
+ */
+public class TransactionalSwallowExceptionRule extends ArchUnitBasedRule {
 
     @Override
-    public List<RuleViolation> check(RuleContext context) throws Exception {
+    protected ArchRule getDefinition() {
+        return ArchRuleDefinition.methods()
+                .that().areAnnotatedWith(Transactional.class)
+                .or().areDeclaredInClassesThat().areAnnotatedWith(Transactional.class)
+                .should(notSwallowException())
+                .as("@Transactional 메서드에서는 예외를 반드시 다시 던져야(throw) 합니다.");
+    }
 
-        List<RuleViolation> violations = new ArrayList<>();
+    private ArchCondition<JavaMethod> notSwallowException() {
+        return new ArchCondition<>("not swallow exception") {
+            @Override
+            public void check(JavaMethod method, ConditionEvents events) {
+                try {
+                    String classResource = "/" + method.getOwner().getName().replace(".", "/") + ".class";
+                    try (InputStream is = method.getOwner().reflect().getResourceAsStream(classResource)) {
+                        if (is == null) return;
+                        ClassReader cr = new ClassReader(is);
+                        ClassNode cn = new ClassNode();
+                        cr.accept(cn, 0);
 
-        String basePackage = context.basePackage();
-
-        for (Class<?> serviceClass : scanServiceClasses(basePackage)) {
-
-            if (!isDataAccessService(serviceClass)) {
-                continue;
+                        for (MethodNode mn : cn.methods) {
+                            if (mn.name.equals(method.getName()) && mn.tryCatchBlocks != null && !mn.tryCatchBlocks.isEmpty()) {
+                                if (isSwallowing(mn)) {
+                                    events.add(SimpleConditionEvent.violated(method, 
+                                        String.format("Method %s catches exception but returns without throwing it back. Transaction rollback will not occur.", method.getFullName())));
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
             }
-
-            analyzeClassWithAsm(serviceClass, violations);
-        }
-
-        return violations;
+        };
     }
 
-    /**
-     * @Service 클래스 스캔 (Context 기반)
-     */
-    private Set<Class<?>> scanServiceClasses(String basePackage)
-            throws ClassNotFoundException {
-
-        ClassPathScanningCandidateComponentProvider scanner =
-                new ClassPathScanningCandidateComponentProvider(false);
-
-        scanner.addIncludeFilter(new AnnotationTypeFilter(Service.class));
-
-        Set<Class<?>> classes = new HashSet<>();
-
-        for (var beanDef : scanner.findCandidateComponents(basePackage)) {
-            classes.add(Class.forName(beanDef.getBeanClassName()));
-        }
-
-        return classes;
-    }
-
-    /**
-     * ASM 분석
-     */
-    private void analyzeClassWithAsm(
-            Class<?> clazz,
-            List<RuleViolation> violations
-    ) throws Exception {
-
-        String classFile = "/" + clazz.getName().replace(".", "/") + ".class";
-
-        boolean classTransactional =
-                clazz.isAnnotationPresent(Transactional.class);
-
-        try (InputStream is = clazz.getResourceAsStream(classFile)) {
-            if (is == null) return;
-
-            ClassReader reader = new ClassReader(is);
-            ClassNode classNode = new ClassNode();
-            reader.accept(classNode, 0);
-
-            for (MethodNode method : classNode.methods) {
-
-                boolean methodTransactional = hasTransactional(method);
-
-                if (!classTransactional && !methodTransactional) {
-                    continue;
+    private boolean isSwallowing(MethodNode mn) {
+        for (TryCatchBlockNode tcb : mn.tryCatchBlocks) {
+            AbstractInsnNode current = tcb.handler;
+            while (current != null) {
+                int opcode = current.getOpcode();
+                if (opcode == Opcodes.ATHROW) break; // 정상: 다시 던짐
+                if (opcode >= Opcodes.IRETURN && opcode <= Opcodes.RETURN) {
+                    return true; // 위반: 다시 던지지 않고 리턴함
                 }
-
-                if (hasCatchAndReturn(method)) {
-
-                    Integer lineNumber = findFirstLineNumber(method);
-                    String filePath = resolveSourcePath(clazz);
-
-                    violations.add(new RuleViolation(
-                            "TransactionalSwallowExceptionRule",
-                            Status.FAIL,
-                            " catch + return 으로 인해, 정상적으로 @Transactional 이 되지않음. ",
-                            filePath,
-                            lineNumber
-                    ));
-                }
-            }
-        }
-    }
-
-    private boolean hasTransactional(MethodNode method) {
-        if (method.visibleAnnotations == null) return false;
-
-        return method.visibleAnnotations.stream()
-                .anyMatch(a -> a.desc.contains("Transactional"));
-    }
-
-    private boolean hasCatchAndReturn(MethodNode method) {
-
-        if (method.tryCatchBlocks == null || method.tryCatchBlocks.isEmpty()) {
-            return false;
-        }
-
-        for (AbstractInsnNode insn : method.instructions) {
-            int opcode = insn.getOpcode();
-            if (opcode >= Opcodes.IRETURN && opcode <= Opcodes.RETURN) {
-                return true;
+                current = current.getNext();
             }
         }
         return false;
     }
-
-    /**
-     * DataAccess Service 필터
-     */
-    private boolean isDataAccessService(Class<?> clazz) {
-        return Arrays.stream(clazz.getDeclaredFields())
-                .anyMatch(f ->
-                        f.getType().getName().toLowerCase().contains("mapper")
-                );
-    }
-
 }

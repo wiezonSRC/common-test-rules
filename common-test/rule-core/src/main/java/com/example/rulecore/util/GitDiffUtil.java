@@ -26,8 +26,8 @@ public class GitDiffUtil {
             // --name-only: 파일명만, HEAD: 마지막 커밋 대비 모든 변경사항
             relativePaths.addAll(executeCommand(projectRoot, "git", "diff", "--name-only", "HEAD"));
 
-            // 2. Untracked 파일 추출
-            relativePaths.addAll(executeCommand(projectRoot, "git", "ls-files", "--others", "--exclude-standard"));
+            // 2. Untracked 파일 추출 (추후 추가)
+//            relativePaths.addAll(executeCommand(projectRoot, "git", "ls-files", "--others", "--exclude-standard"));
 
         } catch (Exception e) {
             System.err.println("[GIT] Failed to get diff: " + e.getMessage());

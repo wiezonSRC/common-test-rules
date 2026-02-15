@@ -15,9 +15,15 @@ public class RulePlugin implements Plugin<Project> {
     public void apply(Project project) {
         // 1. Register Extension
         RuleExtension extension = project.getExtensions().create("rule", RuleExtension.class);
+        
+        // 기본값(Convention) 설정
+        extension.getRuleGroupName().convention("ALL");
+        extension.getIncremental().convention(true);
+        extension.getFailOnViolation().convention(false);
         extension.getEnableFormatter().convention(true);
 
         // 2. Register Task
+        // ./gradlew ruleCheck
         project.getTasks().register("ruleCheck", RuleTask.class, task -> {
             task.setExtension(extension);
         });

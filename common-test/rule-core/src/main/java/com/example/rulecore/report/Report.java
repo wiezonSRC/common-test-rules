@@ -14,15 +14,9 @@ import java.util.List;
 public class Report {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private Path outputDir = Path.of(".");
-
-    public Report() {}
+    private final Path outputDir;
 
     public Report(Path outputDir) {
-        this.outputDir = outputDir;
-    }
-
-    public void setOutputDir(Path outputDir) {
         this.outputDir = outputDir;
     }
 

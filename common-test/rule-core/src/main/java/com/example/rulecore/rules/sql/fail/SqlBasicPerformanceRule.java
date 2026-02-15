@@ -1,77 +1,105 @@
 package com.example.rulecore.rules.sql.fail;
 
-import com.example.rulecore.ruleEngine.Rule;
-import com.example.rulecore.ruleEngine.RuleContext;
+import com.example.rulecore.ruleEngine.enums.Status;
 import com.example.rulecore.ruleEngine.RuleViolation;
-import com.example.rulecore.util.SqlParamFactory;
-import com.example.rulecore.util.Status;
+import com.example.rulecore.rules.sql.MybatisUnitBasedRule;
+import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.select.PlainSelect;
-import net.sf.jsqlparser.statement.select.Select;
-import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.statement.select.ParenthesedSelect;
-import org.apache.ibatis.mapping.BoundSql;
-import org.apache.ibatis.mapping.MappedStatement;
-import org.apache.ibatis.mapping.SqlCommandType;
-import org.apache.ibatis.session.Configuration;
+import net.sf.jsqlparser.statement.select.*;
+import org.xml.sax.Attributes;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class SqlBasicPerformanceRule implements Rule {
+public class SqlBasicPerformanceRule extends MybatisUnitBasedRule {
 
-    private static final String RULE_NAME = "SqlBasicPerformanceRule";
+    private final StringBuilder sqlBuffer = new StringBuilder();
+    private boolean isSqlTag = false;
+    private static final Set<String> SQL_TAGS = Set.of("select", "insert", "update", "delete");
 
     @Override
-    public List<RuleViolation> check(RuleContext context) throws Exception {
-        List<RuleViolation> violations = new ArrayList<>();
-
-        if (context.sqlSessionFactory() == null) return violations;
-
-        Configuration cfg = context.sqlSessionFactory().getConfiguration();
-        Set<String> processedIds = new HashSet<>();
-
-        for (MappedStatement ms : cfg.getMappedStatements()) {
-            if (processedIds.contains(ms.getId())) continue;
-            processedIds.add(ms.getId());
-
-            if (ms.getSqlCommandType() != SqlCommandType.SELECT) continue;
-
-            try {
-                BoundSql bs = ms.getBoundSql(SqlParamFactory.createDefault());
-                String sql = bs.getSql();
-                Statement stmt = CCJSqlParserUtil.parse(sql);
-
-                //FIXME) Where 절 안에 서브쿼리 방지 추가 구현 필요
-                if (stmt instanceof Select) {
-                    Select select = (Select) stmt;
-                    if (select.getSelectBody() instanceof PlainSelect) {
-                        inspectSelect(ms.getId(), (PlainSelect) select.getSelectBody(), violations);
-                    }
-                }
-
-            } catch (Exception e) {
-                // Ignore parsing errors
-            }
+    public void startElement(String uri, String localName, String qName, Attributes attributes) {
+        if (SQL_TAGS.contains(qName.toLowerCase())) {
+            isSqlTag = true;
+            sqlBuffer.setLength(0);
         }
-
-        return violations;
     }
 
-    private void inspectSelect(String queryId, PlainSelect plainSelect, List<RuleViolation> violations) {
-        for (SelectItem item : plainSelect.getSelectItems()) {
-            if (item.getExpression() instanceof ParenthesedSelect) {
-                violations.add(new RuleViolation(
-                        RULE_NAME,
-                        Status.FAIL,
-                        "Scalar subquery 존재. JOIN 사용 권고." + "( " +queryId + " )",
-                        queryId,
-                        0
-                ));
+    @Override
+    public void characters(char[] ch, int start, int length){
+        if (isSqlTag) {
+            sqlBuffer.append(ch, start, length);
+        }
+    }
+
+    @Override
+    public void endElement(String uri, String localName, String qName) {
+        if (SQL_TAGS.contains(qName.toLowerCase())) {
+            String cleanSql = sqlBuffer.toString().replaceAll("<[^>]*>", " ").trim();
+            if (!cleanSql.isEmpty() && qName.equalsIgnoreCase("select")) {
+                analyzeSql(cleanSql);
+            }
+            isSqlTag = false;
+        }
+    }
+
+    private void analyzeSql(String sql) {
+        try {
+            Statement stmt = CCJSqlParserUtil.parse(sql);
+            if (stmt instanceof Select select) {
+                if (select.getPlainSelect() != null) {
+                    inspectPlainSelect(select.getPlainSelect());
+                }
+            }
+        } catch (Exception ignored) {
+            if (sql.toUpperCase().contains("SELECT *")) {
+                reportViolation("SELECT * 사용 금지 (Heuristic 감지)");
             }
         }
+    }
+
+    private void inspectPlainSelect(PlainSelect plainSelect) {
+
+
+        if (plainSelect.getSelectItems() == null) return;
+        List<SelectItem<?>> selectItems = plainSelect.getSelectItems();
+
+        for (SelectItem<?> selectItem : selectItems) {
+            if (selectItem != null) {
+
+                if (selectItem.toString().trim().equals("*")) {
+                    reportViolation("SELECT * 사용 금지.");
+                }
+
+                if (selectItem.toString().trim().endsWith(".*")) {
+                    reportViolation("SELECT t.* 사용 금지.");
+                }
+
+
+                // 스칼라 서브쿼리 감지 (4.8 방식)
+                if (selectItem.getExpression() != null) {
+
+                    selectItem.getExpression().accept(new ExpressionVisitorAdapter() {
+                        @Override
+                        public void visit(Select selectBody) {
+                            reportViolation("SELECT 절 내 스칼라 서브쿼리 사용 금지.");
+                        }
+
+                    });
+                }
+            }
+
+        }
+    }
+
+    private void reportViolation(String message) {
+        currentViolations.add(new RuleViolation(
+                "SqlBasicPerformanceRule",
+                Status.FAIL,
+                message,
+                currentXmlPath.toString(),
+                getLineNumber()
+        ));
     }
 }

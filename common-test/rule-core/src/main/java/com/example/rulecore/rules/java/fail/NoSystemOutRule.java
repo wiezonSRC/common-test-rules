@@ -1,6 +1,6 @@
 package com.example.rulecore.rules.java.fail;
 
-import com.example.rulecore.rules.ArchUnitBasedRule;
+import com.example.rulecore.rules.java.ArchUnitBasedRule;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 
