@@ -24,9 +24,7 @@ public class RulePlugin implements Plugin<Project> {
 
         // 2. Register Task
         // ./gradlew ruleCheck
-        project.getTasks().register("ruleCheck", RuleTask.class, task -> {
-            task.setExtension(extension);
-        });
+        project.getTasks().register("ruleCheck", RuleTask.class, task -> task.setExtension(extension));
 
         // 3. Connect to 'check' task
         project.getTasks().named("check").configure(t -> t.dependsOn("ruleCheck"));
@@ -64,7 +62,7 @@ public class RulePlugin implements Plugin<Project> {
                         "set", "values", "into", "distinct", "case", "when", "then", "else", "end"
                 );
 
-                String result = (String) content;
+                String result = content;
                 for (String keyword : keywords) {
                     result = result.replaceAll("(?i)(?<![</])\b" + keyword + "\b", keyword.toUpperCase());
                 }

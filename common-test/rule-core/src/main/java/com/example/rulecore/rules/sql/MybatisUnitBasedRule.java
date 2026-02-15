@@ -3,9 +3,7 @@ package com.example.rulecore.rules.sql;
 import com.example.rulecore.ruleEngine.Rule;
 import com.example.rulecore.ruleEngine.RuleContext;
 import com.example.rulecore.ruleEngine.RuleViolation;
-import org.xml.sax.Attributes;
 import org.xml.sax.Locator;
-import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import javax.xml.parsers.SAXParser;

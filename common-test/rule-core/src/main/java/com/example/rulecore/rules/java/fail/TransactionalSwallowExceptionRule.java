@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.InputStream;
 
 /**
- * @Transactional 메서드 내에서 예외를 catch하고 다시 throw하지 않는 경우를 ASM으로 정밀 분석합니다.
+ * Transactional 메서드 내에서 예외를 catch하고 다시 throw하지 않는 경우를 ASM으로 정밀 분석합니다.
  */
 public class TransactionalSwallowExceptionRule extends ArchUnitBasedRule {
 

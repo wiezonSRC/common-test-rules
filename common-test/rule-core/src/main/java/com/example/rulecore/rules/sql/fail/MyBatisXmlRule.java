@@ -11,7 +11,7 @@ import org.xml.sax.SAXException;
 public class MyBatisXmlRule extends MybatisUnitBasedRule {
 
     @Override
-    public void characters(char[] ch, int start, int length) throws SAXException {
+    public void characters(char[] ch, int start, int length){
         String text = new String(ch, start, length);
         if (hasRawInequality(text)) {
             currentViolations.add(new RuleViolation(

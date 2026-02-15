@@ -18,7 +18,7 @@ public class MyBatisIfRule extends MybatisUnitBasedRule {
     private static final Set<String> SAFETY_TAGS = Set.of("where", "set", "trim", "foreach");
 
     @Override
-    public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
+    public void startElement(String uri, String localName, String qName, Attributes attributes) {
         String tagName = qName.toLowerCase();
         
         if ("if".equals(tagName)) {
@@ -37,7 +37,7 @@ public class MyBatisIfRule extends MybatisUnitBasedRule {
     }
 
     @Override
-    public void endElement(String uri, String localName, String qName) throws SAXException {
+    public void endElement(String uri, String localName, String qName)  {
         if (!tagStack.isEmpty()) {
             tagStack.pop();
         }

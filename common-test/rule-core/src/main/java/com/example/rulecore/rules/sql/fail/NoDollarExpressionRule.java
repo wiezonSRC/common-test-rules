@@ -8,7 +8,7 @@ import org.xml.sax.SAXException;
 public class NoDollarExpressionRule extends MybatisUnitBasedRule {
 
     @Override
-    public void characters(char[] ch, int start, int length) throws SAXException {
+    public void characters(char[] ch, int start, int length) {
         String text = new String(ch, start, length);
         if (text.contains("${")) {
             currentViolations.add(new RuleViolation(

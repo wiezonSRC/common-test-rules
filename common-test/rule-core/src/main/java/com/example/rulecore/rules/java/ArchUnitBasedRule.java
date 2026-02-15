@@ -50,15 +50,14 @@ public abstract class ArchUnitBasedRule implements Rule {
 
         FailureReport failureReport = getDefinition().evaluate(classes).getFailureReport();
 
-        failureReport.getDetails().forEach(event -> {
-            violations.add(new RuleViolation(
-                    getName(),
-                    Status.FAIL,
-                    event,
-                    null,
-                    0
-            ));
-        });
+        failureReport.getDetails().forEach(event ->
+                violations.add(new RuleViolation(
+                getName(),
+                Status.FAIL,
+                event,
+                null,
+                0
+        )));
 
         return violations;
     }

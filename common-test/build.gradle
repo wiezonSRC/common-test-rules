@@ -43,15 +43,7 @@ artifacts {
     archives testJar
 }
 
-//JITPACK
-publishing {
-    publications {
-        testLib(MavenPublication) {
-            artifactId = 'common-test'
-            artifact testJar
-        }
-    }
-}
+
 
 
 

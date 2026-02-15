@@ -3,6 +3,7 @@ package com.example.rulecore.ruleEngine.enums;
 import com.example.rulecore.ruleEngine.Rule;
 import com.example.rulecore.rules.java.fail.*;
 import com.example.rulecore.rules.sql.fail.*;
+import lombok.Getter;
 
 import java.util.Arrays;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.List;
 /**
  * 관련 있는 규칙들을 논리적인 그룹으로 묶어 관리하는 Enum입니다.
  */
+@Getter
 public enum RuleGroups {
 
     JAVA_CRITICAL(
@@ -42,7 +44,4 @@ public enum RuleGroups {
         this.rules = Arrays.asList(rules);
     }
 
-    public List<Rule> getRules() {
-        return rules;
-    }
 }
