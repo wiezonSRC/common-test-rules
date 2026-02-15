@@ -3,7 +3,7 @@ package com.example.rulecore.rules.sql.fail;
 import com.example.rulecore.ruleEngine.enums.Status;
 import com.example.rulecore.ruleEngine.RuleViolation;
 import com.example.rulecore.rules.sql.MybatisUnitBasedRule;
-import org.xml.sax.SAXException;
+
 
 public class NoDollarExpressionRule extends MybatisUnitBasedRule {
 

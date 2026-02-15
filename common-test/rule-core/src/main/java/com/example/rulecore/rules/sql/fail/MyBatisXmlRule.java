@@ -3,7 +3,6 @@ package com.example.rulecore.rules.sql.fail;
 import com.example.rulecore.ruleEngine.enums.Status;
 import com.example.rulecore.ruleEngine.RuleViolation;
 import com.example.rulecore.rules.sql.MybatisUnitBasedRule;
-import org.xml.sax.SAXException;
 
 /**
  * MyBatis XML 내의 부등호 사용 시 CDATA 섹션 필수 여부를 검사합니다.

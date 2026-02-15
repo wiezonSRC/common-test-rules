@@ -4,7 +4,7 @@ import com.example.rulecore.ruleEngine.enums.Status;
 import com.example.rulecore.ruleEngine.RuleViolation;
 import com.example.rulecore.rules.sql.MybatisUnitBasedRule;
 import org.xml.sax.Attributes;
-import org.xml.sax.SAXException;
+
 
 import java.util.Set;
 import java.util.Stack;

@@ -35,7 +35,7 @@ public abstract class ArchUnitBasedRule implements Rule {
             // 증분 검증: 변경된 파일 중 .java에 해당하는 .class 경로만 추출
             List<Path> targetPaths = context.affectedFiles().stream()
                     .filter(p -> p.toString().endsWith(".java"))
-                    .map(p -> resolveClassPath(context.projectRoot(), p))
+                    .map(this::resolveClassPath)
                     .filter(p -> p != null && p.toFile().exists())
                     .collect(Collectors.toList());
 
@@ -65,7 +65,7 @@ public abstract class ArchUnitBasedRule implements Rule {
     /**
      * .java 파일 경로를 빌드된 .class 파일 경로로 변환 시도
      */
-    private Path resolveClassPath(Path projectRoot, Path javaFile) {
+    private Path resolveClassPath(Path javaFile) {
         String pathStr = javaFile.toAbsolutePath().toString().replace("\\", "/");
         if (pathStr.contains("/src/main/java/")) {
             String[] parts = pathStr.split("/src/main/java/");
