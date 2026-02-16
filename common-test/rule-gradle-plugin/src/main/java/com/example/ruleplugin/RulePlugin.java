@@ -6,6 +6,7 @@ import com.diffplug.spotless.extra.wtp.EclipseWtpFormatterStep;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -18,12 +19,15 @@ public class RulePlugin implements Plugin<Project> {
         
         // 기본값(Convention) 설정
         extension.getRuleGroupName().convention("ALL");
+        
+        // incremental 속성은 프로젝트 속성(rule.incremental)으로 오버라이드 가능하도록 설정
         extension.getIncremental().convention(project.getProviders().provider(() -> {
             if (project.hasProperty("rule.incremental")) {
                 return Boolean.parseBoolean((String) project.property("rule.incremental"));
             }
             return true;
         }));
+        
         extension.getFailOnViolation().convention(false);
         extension.getEnableFormatter().convention(true);
 
@@ -36,13 +40,42 @@ public class RulePlugin implements Plugin<Project> {
 
         // 4. Configure Spotless conditionally
         project.afterEvaluate(p -> {
-            if (Boolean.TRUE.equals(extension.getEnableFormatter().get())) {
+            if (Boolean.TRUE.equals(extension.getEnableFormatter().getOrElse(false))) {
                 configureSpotless(p);
             }
+        });
+
+        // 5. Register Combined Task (checkAll)
+        project.getTasks().register("checkAll", task -> {
+            task.setGroup("verification");
+            task.setDescription("포맷팅(선택적)과 규칙 검사를 통합하여 실행합니다.");
+
+            // spotlessApply는 enableFormatter 설정에 따라 조건부 의존성 추가
+            task.dependsOn(project.getProviders().provider(() -> {
+                List<Object> deps = new ArrayList<>();
+                if (extension.getEnableFormatter().getOrElse(false)) {
+                    Object spotlessApply = project.getTasks().findByName("spotlessApply");
+                    if (spotlessApply != null) {
+                        deps.add(spotlessApply);
+                    }
+                }
+                Object ruleCheck = project.getTasks().findByName("ruleCheck");
+                if (ruleCheck != null) {
+                    deps.add(ruleCheck);
+                }
+                return deps;
+            }));
+        });
+
+        // 6. Ensure order: ruleCheck runs after spotlessApply if both are in execution graph
+        project.getTasks().withType(RuleTask.class).configureEach(ruleTask -> {
+            ruleTask.mustRunAfter(project.getTasks().matching(t -> t.getName().equals("spotlessApply")));
         });
     }
 
     private void configureSpotless(Project project) {
+        project.getLogger().info("[RulePlugin] Configuring Spotless for project: {}", project.getName());
+        
         project.getPluginManager().apply(SpotlessPlugin.class);
         SpotlessExtension spotless = project.getExtensions().getByType(SpotlessExtension.class);
         RuleExtension extension = project.getExtensions().getByType(RuleExtension.class);
@@ -52,6 +85,7 @@ public class RulePlugin implements Plugin<Project> {
         }
 
         spotless.java(java -> {
+            java.target("src/**/*.java");
             java.googleJavaFormat().aosp();
             java.removeUnusedImports();
             java.trimTrailingWhitespace();
@@ -75,7 +109,7 @@ public class RulePlugin implements Plugin<Project> {
 
                 String result = content;
                 for (String keyword : keywords) {
-                    result = result.replaceAll("(?i)(?<![</])\b" + keyword + "\b", keyword.toUpperCase());
+                    result = result.replaceAll("(?i)(?<![</])\\b" + keyword + "\\b", keyword.toUpperCase());
                 }
                 return result;
             });
