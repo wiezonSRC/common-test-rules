@@ -1,5 +1,10 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
 rootProject.name = "sample-target"
 
-pluginManagement {
-    includeBuild("../rule-gradle-plugin")
-}

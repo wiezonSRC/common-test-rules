@@ -8,6 +8,7 @@ rule {
     incremental = false
     failOnViolation = false
     enableFormatter = true
+    ratchetFrom = 'feature-0215'
 }
 
 repositories {
