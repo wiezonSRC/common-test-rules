@@ -4,16 +4,6 @@ plugins {
     id "com.diffplug.spotless" version "6.25.0"
 }
 
-spotless {
-    java {
-        target 'src/*/java/**/*.java', 'rule-core/src/*/java/**/*.java', 'rule-gradle-plugin/src/*/java/**/*.java', 'sample-target/src/*/java/**/*.java'
-        googleJavaFormat().aosp() // AOSP style (4 spaces)
-        removeUnusedImports()
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-}
-
 group = 'com.company'
 version = '0.0.1'
 description = 'common-test'
