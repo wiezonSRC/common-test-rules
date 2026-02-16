@@ -5,9 +5,10 @@ plugins {
 
 rule {
     basePackage = "com.rule.commontest.sample"
-    incremental = false
+    incremental = true
     failOnViolation = false
     enableFormatter = true
+    mapperPaths = ["src/main/resources/mapper"]
     ratchetFrom = 'feature-0215'
 }
 
