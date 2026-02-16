@@ -18,7 +18,12 @@ public class RulePlugin implements Plugin<Project> {
         
         // 기본값(Convention) 설정
         extension.getRuleGroupName().convention("ALL");
-        extension.getIncremental().convention(true);
+        extension.getIncremental().convention(project.getProviders().provider(() -> {
+            if (project.hasProperty("rule.incremental")) {
+                return Boolean.parseBoolean((String) project.property("rule.incremental"));
+            }
+            return true;
+        }));
         extension.getFailOnViolation().convention(false);
         extension.getEnableFormatter().convention(true);
 

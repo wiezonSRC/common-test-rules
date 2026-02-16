@@ -31,11 +31,22 @@ public class RuleTask extends DefaultTask {
         }
 
         Path projectRoot = getProject().getProjectDir().toPath();
+        getLogger().info("[RuleTask] Project Root: {}", projectRoot);
         
+        // 프로젝트 속성(rule.incremental)이 있으면 우선 적용, 없으면 Extension 설정 사용
+        boolean isIncremental = getProject().hasProperty("rule.incremental")
+                ? Boolean.parseBoolean((String) getProject().property("rule.incremental"))
+                : extension.getIncremental().get();
+
         // 1. 증분 검사 대상 수집
         List<Path> affectedFiles = new ArrayList<>();
-        if (extension.getIncremental().get()) {
-            affectedFiles = GitDiffUtil.getAffectedFiles(projectRoot);
+        if (isIncremental) {
+            String baseRef = extension.getRatchetFrom().getOrElse("HEAD");
+            getLogger().info("[RuleTask] Running incremental check against: {}", baseRef);
+            affectedFiles = GitDiffUtil.getAffectedFiles(projectRoot, baseRef);
+            getLogger().info("[RuleTask] Affected files count: {}", affectedFiles.size());
+        } else {
+            getLogger().info("[RuleTask] Running full scan (incremental = false)");
         }
 
         // 2. 매퍼 디렉토리 설정
@@ -44,15 +55,21 @@ public class RuleTask extends DefaultTask {
         
         if (customMapperPaths.isEmpty()) {
             Path defaultMapperDir = projectRoot.resolve("src/main/resources/mapper");
+            getLogger().info("[RuleTask] Checking default mapper dir: {}", defaultMapperDir);
             if (defaultMapperDir.toFile().exists()) {
                 mapperDirs.add(defaultMapperDir);
             }
         } else {
             mapperDirs = customMapperPaths.stream()
                     .map(projectRoot::resolve)
-                    .filter(p -> p.toFile().exists())
+                    .filter(p -> {
+                        boolean exists = p.toFile().exists();
+                        if (!exists) getLogger().warn("[RuleTask] Custom mapper path does not exist: {}", p);
+                        return exists;
+                    })
                     .collect(Collectors.toList());
         }
+        getLogger().info("[RuleTask] Total mapper directories: {}", mapperDirs.size());
 
         // 3. 컨텍스트 빌드
         RuleContext context = RuleContext.builder()
