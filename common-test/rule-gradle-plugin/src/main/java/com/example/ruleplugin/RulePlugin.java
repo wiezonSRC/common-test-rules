@@ -40,6 +40,11 @@ public class RulePlugin implements Plugin<Project> {
     private void configureSpotless(Project project) {
         project.getPluginManager().apply(SpotlessPlugin.class);
         SpotlessExtension spotless = project.getExtensions().getByType(SpotlessExtension.class);
+        RuleExtension extension = project.getExtensions().getByType(RuleExtension.class);
+
+        if (extension.getRatchetFrom().isPresent()) {
+            spotless.ratchetFrom(extension.getRatchetFrom().get());
+        }
 
         spotless.java(java -> {
             java.googleJavaFormat().aosp();
@@ -48,8 +53,9 @@ public class RulePlugin implements Plugin<Project> {
             java.endWithNewline();
         });
 
+        // FIXME) 키워드 대문자시, 주석 혹은 <if test= > 태그안의 내용도 키워드 단어가 있다면 치환될 수 있는 위험이 존재 확인필요
         spotless.format("xml", xml -> {
-            xml.target("**/*.xml");
+            xml.target("src/**/*.xml");
             xml.eclipseWtp(EclipseWtpFormatterStep.XML);
             xml.trimTrailingWhitespace();
             xml.indentWithSpaces(4);

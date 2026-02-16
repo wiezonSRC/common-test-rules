@@ -38,4 +38,7 @@ public abstract class RuleExtension {
 
     /** 자동 포맷터(Spotless) 활성화 여부 (기본값: true) */
     public abstract Property<Boolean> getEnableFormatter();
+
+    /** Spotless 증분 적용을 위한 Git Reference (예: main) */
+    public abstract Property<String> getRatchetFrom();
 }
