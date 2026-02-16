@@ -32,13 +32,19 @@ public class RuleRunner {
      * @param outputDir 리포트 저장 경로
      */
     public static RuleResult run(RuleRunner runner, RuleContext context, Path outputDir) {
+        long startTime = System.currentTimeMillis();
         List<RuleViolation> violations = runner.executeRules(context);
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        
+        RuleResult result = new RuleResult(violations, duration);
         
         Report report = new Report(outputDir);
         report.createFailReport(violations.stream().filter(v -> v.status() == Status.FAIL).toList());
         report.createWarnReport(violations.stream().filter(v -> v.status() == Status.WARN).toList());
+        report.createSummaryReport(result);
         
-        return new RuleResult(violations);
+        return result;
     }
 
     /**

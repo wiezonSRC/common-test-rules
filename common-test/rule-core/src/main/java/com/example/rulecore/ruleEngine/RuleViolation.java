@@ -1,7 +1,7 @@
 package com.example.rulecore.ruleEngine;
 
-
 import com.example.rulecore.ruleEngine.enums.Status;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * 규칙 위반 사항에 대한 상세 정보를 담는 레코드 객체입니다.
@@ -14,13 +14,14 @@ public record RuleViolation(
         Integer lineNumber
 ) {
 
-    /**
-     * 터미널에서 클릭 가능한 링크 포맷 제공
-     * 포맷: "(파일명.java:라인번호)"
-     */
+    @JsonProperty("ideLink")
     public String getIdeLink() {
-        if (filePath == null) return "";
-        return "(" + filePath + ":" + (lineNumber != null ? lineNumber : 1) + ")";
+        return "(" + (filePath != null ? filePath : "unknown") + ":" + (lineNumber != null ? lineNumber : 1) + ")";
+    }
+
+    @JsonProperty("fileUrl")
+    public String getFileUrl() {
+        return "file://" + (filePath != null ? filePath : "") + (lineNumber != null ? ":" + lineNumber : "");
     }
 
     /**
@@ -33,5 +34,4 @@ public record RuleViolation(
                 Location: %s
                 """.formatted(status, ruleName, message, getIdeLink());
     }
-
 }

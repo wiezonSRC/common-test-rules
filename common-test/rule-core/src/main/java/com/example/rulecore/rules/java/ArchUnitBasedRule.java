@@ -42,8 +42,14 @@ public abstract class ArchUnitBasedRule implements Rule {
             if (targetPaths.isEmpty()) return violations;
             classes = new ClassFileImporter().importPaths(targetPaths);
         } else {
-            // 전수 검증
-            classes = new ClassFileImporter().importPackages(context.basePackage());
+            // 전수 검증: 빌드 결과물 디렉토리를 직접 임포트하여 ClassLoader 의존성 제거
+            Path classRoot = context.projectRoot().resolve("build/classes/java/main");
+            if (classRoot.toFile().exists()) {
+                classes = new ClassFileImporter().importPath(classRoot);
+            } else {
+                // 폴백: 패키지 기반 (테스트 환경 등)
+                classes = new ClassFileImporter().importPackages(context.basePackage());
+            }
         }
 
         if (classes.isEmpty()) return violations;
