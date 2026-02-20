@@ -10,8 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BadCodeService {
 
     // 1. [FAIL] NoFieldInjectionRule: 필드 주입 금지
-    @Autowired
-    private TransactionTestService testService;
+    @Autowired private TransactionTestService testService;
 
     // 2. [FAIL] JavaConstantsRule: public static 필드는 final이어야 함
     public static String DEFAULT_STATUS = "ACTIVE";
@@ -24,8 +23,8 @@ public class BadCodeService {
         try {
             // 4. [FAIL] NoSystemOutRule: System.out 금지
             System.out.println("Processing something...");
-            
-        } catch (Exception e) { 
+
+        } catch (Exception e) {
             // 5. [FAIL] NoGenericCatchRule: Exception 직접 catch 금지
             // 6. [FAIL] TransactionalSwallowExceptionRule: 트랜잭션 내 catch 후 throw 안함
             logger.error("Error occurred");

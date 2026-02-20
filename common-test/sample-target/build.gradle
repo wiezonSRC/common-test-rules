@@ -5,6 +5,7 @@ plugins {
 
 rule {
     basePackage = "com.rule.commontest.sample"
+    ruleGroupName = "SQL_CRITICAL"
     incremental = true
     failOnViolation = false
     enableFormatter = true

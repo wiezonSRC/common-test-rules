@@ -2,8 +2,10 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.rule.commontest.sample.BadSqlMapper">
 
+
+
     <select id="findBadSql" resultType="map">
-        SELECT *, (SELECT count(*) FROM TB_LOG) as log_count
+        SELECT *, (SELECT count(*) FROM TB_LOG) AS log_count
         FROM TB_USER u, TB_DEPT d
         WHERE u.dept_id = d.id
         AND u.status = ${status}
@@ -20,7 +22,7 @@
 
     <select id="badWithClause" resultType="map">
         WITH BadAliasCTE AS (
-            SELECT id FROM TB_USER
+        SELECT id FROM TB_USER
         )
         SELECT * FROM BadAliasCTE
     </select>
