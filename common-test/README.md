@@ -1,4 +1,4 @@
-# Common Test Rules (Gemini CLI Custom Plugin)
+# Common Test Rules
 
 **Common Test Rules**는 Java 및 MyBatis 환경에서 코드 품질과 SQL 안전성을 자동으로 검증하고 교정하기 위한 도구입니다. 이 프로젝트는 핵심 검증 엔진인 `rule-core`와 이를 Gradle 환경에 통합한 `rule-gradle-plugin`으로 구성되어 있습니다.
 
