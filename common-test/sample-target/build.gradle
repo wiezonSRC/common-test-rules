@@ -5,12 +5,12 @@ plugins {
 
 rule {
     basePackage = "com.rule.commontest.sample"
-    ruleGroupName = "SQL_CRITICAL"
-    incremental = true
+    ruleGroupName = "ALL"
+    incremental = false
     failOnViolation = false
     enableFormatter = true
     mapperPaths = ["src/main/resources/mapper"]
-    ratchetFrom = 'feature-0215'
+    ratchetFrom = 'main'
 }
 
 repositories {
