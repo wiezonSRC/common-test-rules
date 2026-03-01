@@ -6,6 +6,8 @@ import com.example.rulecore.rules.sql.MybatisUnitBasedRule;
 import org.xml.sax.Attributes;
 
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Set;
 import java.util.Stack;
 
@@ -14,7 +16,7 @@ import java.util.Stack;
  */
 public class MyBatisIfRule extends MybatisUnitBasedRule {
 
-    private final Stack<String> tagStack = new Stack<>();
+    private final Deque<String> tagStack = new ArrayDeque<>();
     private static final Set<String> SAFETY_TAGS = Set.of("where", "set", "trim", "foreach");
 
     @Override
