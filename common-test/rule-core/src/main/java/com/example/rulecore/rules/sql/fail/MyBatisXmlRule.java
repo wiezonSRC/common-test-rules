@@ -17,7 +17,8 @@ public class MyBatisXmlRule extends MybatisUnitBasedRule {
                     "MyBatisXmlRule",
                     Status.FAIL,
                     "부등호(<, >) 사용 시 반드시 <![CDATA[ ... ]]> 섹션으로 감싸야 합니다.",
-                    currentXmlPath.toString(),
+                    getCurrentAbsolutePath(),
+                    getCurrentRelativePath(),
                     getLineNumber()
             ));
         }

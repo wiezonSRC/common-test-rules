@@ -57,7 +57,8 @@ public abstract class ArchUnitBasedRule implements Rule {
         FailureReport failureReport = getDefinition().evaluate(classes).getFailureReport();
 
         failureReport.getDetails().forEach(event -> {
-            String filePath = null;
+            String absolutePath = null;
+            String relativePath = null;
             int lineNumber = 0;
 
             // ArchUnit typically includes (FileName.java:LineNumber) at the end of the event string
@@ -71,7 +72,13 @@ public abstract class ArchUnitBasedRule implements Rule {
                     try {
                         lineNumber = Integer.parseInt(parts[1]);
                         // Try to find the file in the project
-                        filePath = findFilePath(context, fileName);
+                        Path found = findFile(context, fileName);
+                        if (found != null) {
+                            absolutePath = found.toString();
+                            relativePath = context.workspaceRoot().relativize(found).toString();
+                        } else {
+                            relativePath = fileName;
+                        }
                     } catch (NumberFormatException ignored) {}
                 }
             }
@@ -80,7 +87,8 @@ public abstract class ArchUnitBasedRule implements Rule {
                 getName(),
                 Status.FAIL,
                 event,
-                filePath,
+                absolutePath,
+                relativePath,
                 lineNumber
             ));
         });
@@ -88,15 +96,14 @@ public abstract class ArchUnitBasedRule implements Rule {
         return violations;
     }
 
-    private String findFilePath(RuleContext context, String fileName) {
+    private Path findFile(RuleContext context, String fileName) {
         // Simple search for the file in the project root
         try (var stream = java.nio.file.Files.walk(context.projectRoot())) {
             return stream.filter(p -> p.getFileName().toString().equals(fileName))
-                    .map(Path::toString)
                     .findFirst()
-                    .orElse(fileName);
+                    .orElse(null);
         } catch (java.io.IOException e) {
-            return fileName;
+            return null;
         }
     }
 

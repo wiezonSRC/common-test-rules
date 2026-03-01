@@ -15,7 +15,8 @@ public class NoDollarExpressionRule extends MybatisUnitBasedRule {
                     "NoDollarExpressionRule",
                     Status.FAIL,
                     "Found ${} usage (SQL Injection risk). Use #{} instead.",
-                    currentXmlPath.toString(),
+                    getCurrentAbsolutePath(),
+                    getCurrentRelativePath(),
                     getLineNumber()
             ));
         }

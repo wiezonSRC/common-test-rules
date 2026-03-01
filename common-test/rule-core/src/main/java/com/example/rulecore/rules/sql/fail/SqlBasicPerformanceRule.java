@@ -98,7 +98,8 @@ public class SqlBasicPerformanceRule extends MybatisUnitBasedRule {
                 "SqlBasicPerformanceRule",
                 Status.FAIL,
                 message,
-                currentXmlPath.toString(),
+                getCurrentAbsolutePath(),
+                getCurrentRelativePath(),
                 getLineNumber()
         ));
     }

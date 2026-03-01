@@ -66,6 +66,7 @@ public class RuleRunner {
                         Status.FAIL,
                         "Exception during rule execution: " + e.getMessage(),
                         "",
+                        "",
                         0
                 ));
             }

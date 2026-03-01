@@ -10,6 +10,7 @@ import java.util.List;
 public record RuleContext(
         String basePackage,
         Path projectRoot,
+        Path workspaceRoot,
         List<Path> mapperDirs,
         List<Path> affectedFiles
 ) {
@@ -24,6 +25,7 @@ public record RuleContext(
     public static class Builder {
         private String basePackage;
         private Path projectRoot;
+        private Path workspaceRoot;
         private List<Path> mapperDirs = Collections.emptyList();
         private List<Path> affectedFiles = Collections.emptyList();
 
@@ -34,6 +36,11 @@ public record RuleContext(
 
         public Builder projectRoot(Path projectRoot) {
             this.projectRoot = projectRoot;
+            return this;
+        }
+
+        public Builder workspaceRoot(Path workspaceRoot) {
+            this.workspaceRoot = workspaceRoot;
             return this;
         }
 
@@ -48,7 +55,7 @@ public record RuleContext(
         }
 
         public RuleContext build() {
-            return new RuleContext(basePackage, projectRoot, mapperDirs, affectedFiles);
+            return new RuleContext(basePackage, projectRoot, workspaceRoot, mapperDirs, affectedFiles);
         }
     }
 }

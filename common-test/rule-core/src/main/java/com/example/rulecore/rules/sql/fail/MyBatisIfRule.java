@@ -28,7 +28,8 @@ public class MyBatisIfRule extends MybatisUnitBasedRule {
                         "MyBatisIfRule",
                         Status.FAIL,
                         "<if> 태그는 SQL 오류 방지를 위해 <where>, <set>, <trim> 내부에 위치해야 합니다.",
-                        currentXmlPath.toString(),
+                        getCurrentAbsolutePath(),
+                        getCurrentRelativePath(),
                         getLineNumber()
                 ));
             }

@@ -24,6 +24,7 @@ public abstract class MybatisUnitBasedRule extends DefaultHandler implements Rul
     protected Path currentXmlPath;
     protected List<RuleViolation> currentViolations;
     protected Locator locator;
+    protected RuleContext context;
 
     @Override
     public void setDocumentLocator(Locator locator) {
@@ -32,6 +33,7 @@ public abstract class MybatisUnitBasedRule extends DefaultHandler implements Rul
 
     @Override
     public List<RuleViolation> check(RuleContext context) throws Exception {
+        this.context = context;
         List<RuleViolation> allViolations = new ArrayList<>();
         this.currentViolations = allViolations;
 
@@ -66,5 +68,17 @@ public abstract class MybatisUnitBasedRule extends DefaultHandler implements Rul
 
     protected int getLineNumber() {
         return locator != null ? locator.getLineNumber() : 0;
+    }
+
+    protected String getCurrentAbsolutePath() {
+        return currentXmlPath != null ? currentXmlPath.toAbsolutePath().toString() : "unknown";
+    }
+
+    protected String getCurrentRelativePath() {
+        if (currentXmlPath == null) return "unknown";
+        if (context != null && context.workspaceRoot() != null) {
+            return context.workspaceRoot().relativize(currentXmlPath).toString();
+        }
+        return currentXmlPath.toString();
     }
 }

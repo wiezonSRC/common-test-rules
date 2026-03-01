@@ -31,7 +31,9 @@ public class RuleTask extends DefaultTask {
         }
 
         Path projectRoot = getProject().getProjectDir().toPath();
+        Path workspaceRoot = getProject().getRootProject().getProjectDir().toPath();
         getLogger().info("[RuleTask] Project Root: {}", projectRoot);
+        getLogger().info("[RuleTask] Workspace Root: {}", workspaceRoot);
         
         // 프로젝트 속성(rule.incremental)이 있으면 우선 적용, 없으면 Extension 설정 사용
         boolean isIncremental = getProject().hasProperty("rule.incremental")
@@ -43,7 +45,7 @@ public class RuleTask extends DefaultTask {
         if (isIncremental) {
             String baseRef = extension.getRatchetFrom().getOrElse("HEAD");
             getLogger().info("[RuleTask] Running incremental check against: {}", baseRef);
-            affectedFiles = GitDiffUtil.getAffectedFiles(projectRoot, baseRef);
+            affectedFiles = GitDiffUtil.getAffectedFiles(workspaceRoot, baseRef);
             getLogger().info("[RuleTask] Affected files count: {}", affectedFiles.size());
         } else {
             getLogger().info("[RuleTask] Running full scan (incremental = false)");
@@ -75,6 +77,7 @@ public class RuleTask extends DefaultTask {
         RuleContext context = RuleContext.builder()
                 .basePackage(extension.getBasePackage().get())
                 .projectRoot(projectRoot)
+                .workspaceRoot(workspaceRoot)
                 .mapperDirs(mapperDirs)
                 .affectedFiles(affectedFiles)
                 .build();
