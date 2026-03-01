@@ -67,6 +67,32 @@ public class Report {
         saveReport(failList, fileName);
     }
 
+    /**
+     * 검사 결과를 콘솔에 출력합니다. (IDE에서 바로가기 링크로 인식 가능한 형식)
+     */
+    public void printConsoleReport(RuleResult result) {
+        if (result.violations().isEmpty()) {
+            System.out.println("\n[RULE CHECK] No violations found. Well done!\n");
+            return;
+        }
+
+        System.out.println("\n========================================");
+        System.out.println("          RULE CHECK RESULTS");
+        System.out.println("========================================\n");
+
+        for (RuleViolation violation : result.violations()) {
+            System.out.println(violation.format());
+        }
+
+        System.out.println("========================================");
+        System.out.println("Summary:");
+        System.out.println("- Total Violations: " + result.violations().size());
+        System.out.println("- Fail: " + result.violations().stream().filter(v -> v.status() == Status.FAIL).count());
+        System.out.println("- Warn: " + result.violations().stream().filter(v -> v.status() == Status.WARN).count());
+        System.out.println("Execution Time: " + result.executionTimeMillis() + "ms");
+        System.out.println("========================================\n");
+    }
+
     private void saveReport(Object data, String fileName) {
         try {
             if (!Files.exists(outputDir)) {

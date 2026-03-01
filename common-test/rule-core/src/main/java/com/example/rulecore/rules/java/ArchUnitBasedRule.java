@@ -56,16 +56,48 @@ public abstract class ArchUnitBasedRule implements Rule {
 
         FailureReport failureReport = getDefinition().evaluate(classes).getFailureReport();
 
-        failureReport.getDetails().forEach(event ->
-                violations.add(new RuleViolation(
+        failureReport.getDetails().forEach(event -> {
+            String filePath = null;
+            int lineNumber = 0;
+
+            // ArchUnit typically includes (FileName.java:LineNumber) at the end of the event string
+            if (event.contains("(") && event.contains(")")) {
+                int start = event.lastIndexOf("(");
+                int end = event.lastIndexOf(")");
+                String location = event.substring(start + 1, end);
+                if (location.contains(":")) {
+                    String[] parts = location.split(":");
+                    String fileName = parts[0];
+                    try {
+                        lineNumber = Integer.parseInt(parts[1]);
+                        // Try to find the file in the project
+                        filePath = findFilePath(context, fileName);
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+
+            violations.add(new RuleViolation(
                 getName(),
                 Status.FAIL,
                 event,
-                null,
-                0
-        )));
+                filePath,
+                lineNumber
+            ));
+        });
 
         return violations;
+    }
+
+    private String findFilePath(RuleContext context, String fileName) {
+        // Simple search for the file in the project root
+        try (var stream = java.nio.file.Files.walk(context.projectRoot())) {
+            return stream.filter(p -> p.getFileName().toString().equals(fileName))
+                    .map(Path::toString)
+                    .findFirst()
+                    .orElse(fileName);
+        } catch (java.io.IOException e) {
+            return fileName;
+        }
     }
 
     /**

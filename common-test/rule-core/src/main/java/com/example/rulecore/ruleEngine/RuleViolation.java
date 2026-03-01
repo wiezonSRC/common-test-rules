@@ -16,7 +16,7 @@ public record RuleViolation(
 
     @JsonProperty("ideLink")
     public String getIdeLink() {
-        return "(" + (filePath != null ? filePath : "unknown") + ":" + (lineNumber != null ? lineNumber : 1) + ")";
+        return (filePath != null ? filePath : "unknown") + ":" + (lineNumber != null ? lineNumber : 1);
     }
 
     @JsonProperty("fileUrl")
@@ -29,9 +29,11 @@ public record RuleViolation(
      */
     public String format() {
         return """
+                ----------------------------------------
                 [%s] %s
+                ----------------------------------------
+                %s
                 Message: %s
-                Location: %s
-                """.formatted(status, ruleName, message, getIdeLink());
+                """.formatted(status, ruleName, getIdeLink(), message);
     }
 }

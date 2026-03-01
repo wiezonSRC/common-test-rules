@@ -44,7 +44,10 @@ public class TransactionalSwallowExceptionRule extends ArchUnitBasedRule {
                             if (mn.name.equals(method.getName()) && mn.tryCatchBlocks != null && !mn.tryCatchBlocks.isEmpty()) {
                                 if (isSwallowing(mn)) {
                                     events.add(SimpleConditionEvent.violated(method, 
-                                        String.format("Method %s catches exception but returns without throwing it back. Transaction rollback will not occur.", method.getFullName())));
+                                        String.format("Method %s catches exception but returns without throwing it back in (%s:%d). Transaction rollback will not occur.", 
+                                            method.getFullName(),
+                                            method.getSourceCodeLocation().getSourceFileName(),
+                                            method.getSourceCodeLocation().getLineNumber())));
                                 }
                             }
                         }

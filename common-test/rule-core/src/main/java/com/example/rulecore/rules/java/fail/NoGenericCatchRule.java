@@ -37,8 +37,10 @@ public class NoGenericCatchRule extends ArchUnitBasedRule {
                 for (TryCatchBlock tryCatchBlock : method.getTryCatchBlocks()) {
                     tryCatchBlock.getCaughtThrowables().forEach(throwable -> {
                         if (FORBIDDEN_EXCEPTIONS.contains(throwable.getName())) {
-                            String message = String.format("Method %s catches generic exception %s", 
-                                    method.getFullName(), throwable.getName());
+                            String message = String.format("Method %s catches generic exception %s in (%s:%d)", 
+                                    method.getFullName(), throwable.getName(), 
+                                    method.getSourceCodeLocation().getSourceFileName(),
+                                    method.getSourceCodeLocation().getLineNumber());
                             events.add(SimpleConditionEvent.violated(method, message));
                         }
                     });

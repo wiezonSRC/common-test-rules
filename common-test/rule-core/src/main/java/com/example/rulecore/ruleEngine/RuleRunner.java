@@ -40,6 +40,7 @@ public class RuleRunner {
         RuleResult result = new RuleResult(violations, duration);
         
         Report report = new Report(outputDir);
+        report.printConsoleReport(result);
         report.createFailReport(violations.stream().filter(v -> v.status() == Status.FAIL).toList());
         report.createWarnReport(violations.stream().filter(v -> v.status() == Status.WARN).toList());
         report.createSummaryReport(result);
