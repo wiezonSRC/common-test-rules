@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.example.mapper.TestMapper2">
+    <select id="findBadPerformancePayments" resultType="map">
+        SELECT * FROM payments WHERE payment_id = #{id}
+    </select>
+</mapper>
