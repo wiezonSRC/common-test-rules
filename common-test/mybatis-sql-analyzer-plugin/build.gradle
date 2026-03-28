@@ -1,0 +1,32 @@
+plugins {
+    id 'java-gradle-plugin'
+}
+
+group = 'com.example'
+version = '0.1.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    api project(':mybatis-sql-analyzer-core')
+    
+    implementation 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+}
+
+gradlePlugin {
+    plugins {
+        sqlAnalyzerPlugin {
+            id = 'com.example.mybatis-sql-analyzer'
+            implementationClass = 'com.example.sqlanalyzer.plugin.SqlAnalyzerPlugin'
+        }
+    }
+}

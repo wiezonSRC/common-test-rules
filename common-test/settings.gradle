@@ -11,3 +11,6 @@ rootProject.name = 'common-test'
 include 'rule-core'
 include 'rule-gradle-plugin'
 include 'sample-target'
+
+include 'mybatis-sql-analyzer-core'
+include 'mybatis-sql-analyzer-plugin'
