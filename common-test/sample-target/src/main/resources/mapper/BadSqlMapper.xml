@@ -2,7 +2,13 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.rule.commontest.sample.BadSqlMapper">
 
-
+    <select id="findWithCdata" resultType="map">
+        <![CDATA[
+        SELECT *
+        FROM payments
+        WHERE amount > #{minAmount} AND created_at < NOW()
+        ]]>
+    </select>
 
     <select id="findBadSql" resultType="map">
         SELECT *, (SELECT count(*) FROM TB_LOG) AS log_count

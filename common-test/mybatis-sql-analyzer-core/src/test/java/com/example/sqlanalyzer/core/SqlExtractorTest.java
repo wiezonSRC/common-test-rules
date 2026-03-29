@@ -28,6 +28,7 @@ class SqlExtractorTest {
 
     private Connection connection;
     private final String queryId = "findBadPerformancePayments";
+    private final String mapperPath = "src/test/resources/mapper/TestMapper.xml";
     private final Path mapperBaseDir = Path.of("src/test/resources/mapper");
 
     @BeforeEach
@@ -117,7 +118,7 @@ class SqlExtractorTest {
     @Test
     @DisplayName("Dynamic Query 추출")
     void findDynamicQuery() throws Exception {
-        Node queryIdNode = getQueryIdDetail();
+        Node queryIdNode = getQueryIdDetail(queryId, mapperPath);
         assertNotNull(queryIdNode.getTextContent());
     }
 
@@ -126,7 +127,7 @@ class SqlExtractorTest {
     @Test
     @DisplayName("동적 쿼리 >> SQL 변경")
     void dynamicQueryChangeToSql() throws Exception {
-        Node nodeList = getQueryIdDetail();
+        Node nodeList = getQueryIdDetail(queryId, mapperPath);
         // [mybatis 태그 확인]
         //expalin용 fakeSql
         String fakeSql = buildFakeSql(nodeList, true);
@@ -144,7 +145,7 @@ class SqlExtractorTest {
 
     }
 
-    private static String buildFakeSql(Node nodeList, boolean isForExplain) {
+    public static String buildFakeSql(Node nodeList, boolean isForExplain) {
         NodeList childNodes = nodeList.getChildNodes();
         StringBuilder fakeSql = new StringBuilder();
         
@@ -152,7 +153,6 @@ class SqlExtractorTest {
             Node child = childNodes.item(i);
 
             // 1. 텍스트 노드 및 CDATA 처리
-            //FIXME) CDATA를 벗겨내고 한번 더 돌려야함 (치환로직 필요 >> 보통 쿼리문 전체를 CDATA로 묶음)
             if (child.getNodeType() == Node.TEXT_NODE || child.getNodeType() == Node.CDATA_SECTION_NODE) {
                 String text = child.getNodeValue();
                 if (text != null) {
@@ -234,8 +234,8 @@ class SqlExtractorTest {
     }
 
 
-    private Node getQueryIdDetail() throws ParserConfigurationException, SAXException, IOException {
-        String mapperPath = "src/test/resources/mapper/TestMapper.xml";
+    public static Node getQueryIdDetail(String queryId, String mapperPath) throws ParserConfigurationException, SAXException, IOException {
+
 
         // document xml parser dfd 검증로직 종료
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();

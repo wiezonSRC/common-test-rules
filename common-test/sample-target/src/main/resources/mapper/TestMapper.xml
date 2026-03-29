@@ -5,6 +5,14 @@
 
 <mapper namespace="com.rule.commontest.sample.TestMapper">
 
+    <select id="findWithCdata" resultType="map">
+        <![CDATA[
+            SELECT *
+            FROM payments
+            WHERE amount > #{minAmount} AND created_at < NOW()
+        ]]>
+    </select>
+
     <select id="selectTest" resultType="map">
         SELECT ID, NAME
         FROM TBSI_TEST
