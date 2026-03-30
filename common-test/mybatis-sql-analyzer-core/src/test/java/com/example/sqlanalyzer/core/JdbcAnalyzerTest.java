@@ -56,7 +56,8 @@ class JdbcAnalyzerTest {
     @DisplayName("EXPLAIN 실행")
     void doExplain() throws ParserConfigurationException, IOException, SAXException, SQLException {
         Node queryIdDetail = SqlExtractorTest.getQueryIdDetail(queryId, mapperPath);
-        String fakeSql = SqlExtractorTest.buildFakeSql(queryIdDetail, true);
+        String namespace = queryIdDetail.getOwnerDocument().getDocumentElement().getAttribute("namespace");
+        String fakeSql = SqlExtractorTest.buildFakeSql(queryIdDetail, true, namespace);
         ResultSet rs = null;
 
         if(fakeSql != null){
@@ -149,7 +150,8 @@ class JdbcAnalyzerTest {
 
     public static Set<String> extractTableMethod(String queryId, String mapperPath) throws ParserConfigurationException, SAXException, IOException, JSQLParserException {
         Node queryIdDetail = SqlExtractorTest.getQueryIdDetail(queryId, mapperPath);
-        String fakeSql = SqlExtractorTest.buildFakeSql(queryIdDetail, true);
+        String namespace = ((org.w3c.dom.Element) queryIdDetail.getOwnerDocument().getDocumentElement()).getAttribute("namespace");
+        String fakeSql = SqlExtractorTest.buildFakeSql(queryIdDetail, true, namespace);
 
         net.sf.jsqlparser.statement.Statement stmt = CCJSqlParserUtil.parse(fakeSql);
         TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();

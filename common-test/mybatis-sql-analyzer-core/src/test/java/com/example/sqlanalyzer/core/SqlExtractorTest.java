@@ -4,6 +4,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.util.TablesNamesFinder;
 import org.junit.jupiter.api.*;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
@@ -11,21 +12,30 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class SqlExtractorTest {
 
+    private static Map<String, String> sqlSnippetRegistry;
     private Connection connection;
     private final String queryId = "findBadPerformancePayments";
     private final String mapperPath = "src/test/resources/mapper/TestMapper.xml";
@@ -33,6 +43,7 @@ class SqlExtractorTest {
 
     @BeforeEach
     void set() throws Exception {
+        sqlSnippetRegistry = getSqlSnippetRegistry(mapperBaseDir);
         // H2 메모리 DB 설정 (테이블 및 인덱스 생성)
         connection = DriverManager.getConnection("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1", "sa", "");
 
@@ -71,11 +82,14 @@ class SqlExtractorTest {
         }
 
         // 2. xml 파일 리스트 찾기
-        List<File> xmlFileList = Files.walk(mapperBaseDir)
-                .filter(path -> Files.isRegularFile(path))
-                .filter(path -> path.toString().endsWith("xml"))
-                .map(path -> path.toFile())
-                .toList();
+        List<File> xmlFileList;
+        try (Stream<Path> paths = Files.walk(mapperBaseDir)) {
+            xmlFileList = paths
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith("xml"))
+                    .map(Path::toFile)
+                    .toList();
+        }
 
 
         // 3. queryId 존재하는 mapper 필터링
@@ -89,23 +103,23 @@ class SqlExtractorTest {
         String[] targetTags = {"select", "insert", "update", "delete"};
 
         // queryId 매칭해보기
-        boolean isMatched = false;
         for(File xml : xmlFileList){
             Document document = builder.parse(xml);
             document.getDocumentElement().normalize();
 
+            boolean isMatchedInFile = false;
             for(String tagName : targetTags){
                 NodeList nodeList = document.getElementsByTagName(tagName);
 
                 for(int i = 0; i < nodeList.getLength(); i++){
                     if(queryId.equals(nodeList.item(i).getAttributes().getNamedItem("id").getNodeValue())){
                         matchedFilePaths.add(xml.getAbsolutePath());
-                        isMatched = true;
+                        isMatchedInFile = true;
                         break;
                     }
                 }
 
-                if(isMatched){
+                if(isMatchedInFile){
                     break;
                 }
             }
@@ -128,9 +142,11 @@ class SqlExtractorTest {
     @DisplayName("동적 쿼리 >> SQL 변경")
     void dynamicQueryChangeToSql() throws Exception {
         Node nodeList = getQueryIdDetail(queryId, mapperPath);
+        String namespace = ((Element) nodeList.getOwnerDocument().getDocumentElement()).getAttribute("namespace");
+
         // [mybatis 태그 확인]
-        //expalin용 fakeSql
-        String fakeSql = buildFakeSql(nodeList, true);
+        // explain용 fakeSql
+        String fakeSql = buildFakeSql(nodeList, true, namespace);
 
         // 3. When: JSqlParser를 이용해 파싱 및 테이블명 추출
         net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(fakeSql);
@@ -145,7 +161,7 @@ class SqlExtractorTest {
 
     }
 
-    public static String buildFakeSql(Node nodeList, boolean isForExplain) {
+    public static String buildFakeSql(Node nodeList, boolean isForExplain, String currentNamespace) {
         NodeList childNodes = nodeList.getChildNodes();
         StringBuilder fakeSql = new StringBuilder();
         
@@ -163,33 +179,32 @@ class SqlExtractorTest {
             // 2. 엘리먼트 노드(MyBatis 태그) 처리
             else if (child.getNodeType() == Node.ELEMENT_NODE) {
                 String nodeName = child.getNodeName().toLowerCase();
-
                 switch (nodeName) {
                     case "where":
-                        fakeSql.append(" WHERE 1=1 AND ( ");
-                        fakeSql.append(buildFakeSql(child, isForExplain));
-                        fakeSql.append(" ) ");
+                        fakeSql.append(" WHERE 1=1 ");
+                        String whereContent = buildFakeSql(child, isForExplain, currentNamespace);
+                        // 앞부분의 AND나 OR를 제거 (JSqlParser 에러 방지용)
+                        String cleanedWhere = whereContent.trim().replaceAll("(?i)^(and|or)\\s+", "");
+                        if (!cleanedWhere.isEmpty()) {
+                            fakeSql.append(" AND ( ").append(cleanedWhere).append(" ) ");
+                        }
                         break;
                     case "set":
                         fakeSql.append(" SET ");
-                        String setContent = buildFakeSql(child, isForExplain).trim();
+                        String setContent = buildFakeSql(child, isForExplain, currentNamespace).trim();
                         if (setContent.endsWith(",")) {
                             setContent = setContent.substring(0, setContent.length() - 1);
                         }
                         fakeSql.append(setContent).append(" ");
                         break;
                     case "foreach":
-                        // JSqlParser가 IN (?) 형태로 인식할 수 있도록 더미 처리
                         fakeSql.append(" ( ? ) ");
                         break;
                     case "if":
-                        // EXPLAIN을 위해 if 문 안의 내용은 일단 포함시킴 (최대한의 조건 검사)
-                        fakeSql.append(" ").append(buildFakeSql(child, isForExplain)).append(" ");
+                        fakeSql.append(" ").append(buildFakeSql(child, isForExplain, currentNamespace)).append(" ");
                         break;
                     case "choose":
-                        // choose 내부의 when/otherwise 중 하나를 선택하거나 전체를 합침
                         if (isForExplain) {
-                            // EXPLAIN 모드일 때는 첫 번째 valid한 경로만 찾거나 otherwise를 찾음
                             Node targetNode = null;
                             NodeList chooseChildren = child.getChildNodes();
                             for (int j = 0; j < chooseChildren.getLength(); j++) {
@@ -204,27 +219,57 @@ class SqlExtractorTest {
                                 }
                             }
                             if (targetNode != null) {
-                                fakeSql.append(" ").append(buildFakeSql(targetNode, true)).append(" ");
+                                fakeSql.append(" ").append(buildFakeSql(targetNode, true, currentNamespace)).append(" ");
                             }
                         } else {
-                            // 테이블 추출 모드일 때는 모든 경로를 합쳐서 테이블명을 다 찾게 함
-                            fakeSql.append(" ").append(buildFakeSql(child, false)).append(" ");
+                            fakeSql.append(" ").append(buildFakeSql(child, false, currentNamespace)).append(" ");
                         }
                         break;
                     case "when":
                     case "otherwise":
+                        fakeSql.append(" ").append(buildFakeSql(child, isForExplain, currentNamespace)).append(" ");
+                        break;
                     case "trim":
-                        fakeSql.append(" ").append(buildFakeSql(child, isForExplain)).append(" ");
+                        Element trimElem = (Element) child;
+                        String prefix = trimElem.getAttribute("prefix");
+                        String prefixOverrides = trimElem.getAttribute("prefixOverrides");
+                        
+                        String trimContent = buildFakeSql(child, isForExplain, currentNamespace).trim();
+                        if (!prefixOverrides.isEmpty()) {
+                            String[] overrides = prefixOverrides.split("\\|");
+                            for (String ov : overrides) {
+                                trimContent = trimContent.replaceAll("(?i)^" + Pattern.quote(ov.trim()) + "\\s+", "");
+                            }
+                        }
+                        fakeSql.append(" ").append(prefix).append(" ").append(trimContent).append(" ");
                         break;
                     case "bind":
-                        // bind 태그는 SQL 결과에 직접적인 영향을 주지 않으므로 무시
                         break;
                     case "include":
-                        fakeSql.append(" /* included_sql_placeholder */ ");
+                        String refid = ((Element) child).getAttribute("refid");
+                        String fqn = refid.contains(".") ? refid : currentNamespace + "." + refid;
+
+                        String rawSqlXml = sqlSnippetRegistry.get(fqn);
+                        if(rawSqlXml != null){
+                            try{
+                                DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+                                dbf.setValidating(false);
+                                dbf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+
+                                DocumentBuilder db = dbf.newDocumentBuilder();
+                                Document parse = db.parse(new ByteArrayInputStream(rawSqlXml.getBytes()));
+
+                                // <sql> 태그의 내용을 다시 buildFakeSql로 처리 (isForExplain 유지)
+                                fakeSql.append(" ").append(buildFakeSql(parse.getDocumentElement(), isForExplain, currentNamespace)).append(" ");
+                            }catch(Exception e){
+                                fakeSql.append(" /* ERROR_PARSING_INCLUDE: ").append(fqn).append(" */ ");
+                            }
+                        }else{
+                            fakeSql.append(" /* MISSING_INCLUDE: ").append(fqn).append(" */ ");
+                        }
                         break;
                     default:
-                        // 정의되지 않은 태그도 재귀적으로 내부 텍스트 추출 시도
-                        fakeSql.append(buildFakeSql(child, isForExplain));
+                        fakeSql.append(buildFakeSql(child, isForExplain, currentNamespace));
                         break;
                 }
             }
@@ -233,6 +278,71 @@ class SqlExtractorTest {
         return fakeSql.toString();
     }
 
+    @Test
+    @DisplayName("refId <sql> 캐싱하기")
+    void getRefIdCache() throws Exception {
+        Map<String, String> sqlSnippetRegistry = getSqlSnippetRegistry(mapperBaseDir);
+        Assertions.assertFalse(sqlSnippetRegistry.isEmpty());
+    }
+
+    private Map<String, String> getSqlSnippetRegistry(Path mapperBaseDir) throws IOException, ParserConfigurationException, SAXException, TransformerException {
+        Map<String, String> sqlSnippetRegistry = new HashMap<>();
+        // 1. 매퍼 디렉토리 존재 확인
+        if(!Files.isDirectory(mapperBaseDir)){
+            Assertions.fail("매퍼 디렉토리가 존재하지 않습니다.");
+        }
+
+        // 2. xml 파일 리스트 찾기
+        List<File> xmlFileList;
+        try (Stream<Path> paths = Files.walk(mapperBaseDir)) {
+            xmlFileList = paths
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith("xml"))
+                    .map(Path::toFile)
+                    .toList();
+        }
+
+        // 3. <sql> 찾기
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setValidating(false);
+        dbf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        DocumentBuilder builder = dbf.newDocumentBuilder();
+        for(File xmlFile : xmlFileList){
+            Document doc = builder.parse(xmlFile);
+            doc.getDocumentElement().normalize();
+
+            //[핵심 1] 루트 태그(<mapper>)에서 namespace 속성 추출
+            Element mapperElement = doc.getDocumentElement();
+            String namespace = mapperElement.getAttribute("namespace");
+
+            // namespace가 없는 xml(예: 설정파일 등)은 스킵
+            if (namespace == null || namespace.trim().isEmpty()) continue;
+
+            // <sql> 태그 찾기
+            NodeList sqlNodes = doc.getElementsByTagName("sql");
+            for (int i = 0; i < sqlNodes.getLength(); i++) {
+                Element sqlElement = (Element) sqlNodes.item(i);
+
+                //[핵심 2] sql 태그의 id 추출하여 풀네임(FQN) Key 생성
+                String id = sqlElement.getAttribute("id");
+                String fqn = namespace + "." + id;
+
+                //[핵심 3] 내부 태그 유지를 위해 Node를 순수 XML 문자열로 변환 (메모리 효율을 위해 String 저장)
+                TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                Transformer transformer = transformerFactory.newTransformer();
+                transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+
+                StringWriter stringWriter = new StringWriter();
+                transformer.transform(new DOMSource(sqlElement), new StreamResult(stringWriter));
+
+                String rawSqlXml = stringWriter.toString();
+
+                sqlSnippetRegistry.put(fqn, rawSqlXml);
+            }
+
+        }
+        return sqlSnippetRegistry;
+    }
 
     public static Node getQueryIdDetail(String queryId, String mapperPath) throws ParserConfigurationException, SAXException, IOException {
 

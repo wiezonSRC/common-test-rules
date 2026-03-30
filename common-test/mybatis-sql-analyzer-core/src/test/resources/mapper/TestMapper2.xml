@@ -3,4 +3,10 @@
     <select id="findBadPerformancePayments" resultType="map">
         SELECT * FROM payments WHERE payment_id = #{id}
     </select>
+    <select i="findTest" resultType="map">
+        SELECT *
+        FROM payments
+        <include refid="com.example.mapper.TestMapper.whereCondition">
+        </include>
+    </select>
 </mapper>

@@ -11,4 +11,18 @@
             AND p.status = #{status}
         </if>
     </select>
+
+    <sql id="whereCondition">
+        <where>
+            <if test="id != null and id != ''">
+                id = #{id}
+            </if>
+            <if test="now != null and now != ''">
+                create_at = #{now}
+            </if>
+            <if test="notMatch != null and notMatch != ''">
+                <![CDATA[ 1 <> 2 ]]>
+            </if>
+        </where>
+    </sql>
 </mapper>
