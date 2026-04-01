@@ -1,121 +1,124 @@
 package com.example.sqlanalyzer.core;
 
-import lombok.Builder;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.util.TablesNamesFinder;
-
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.text.MessageFormat;
 import java.util.Set;
 
 @Slf4j
 public class JdbcAnalyzer {
 
-    @Getter
-    @Builder
-    public static class AnalysisResult {
-        private String explainResult;
-        private List<TableInfo> tables;
-    }
+    private JdbcAnalyzer() {}
 
-    @Getter
-    @Builder
-    public static class TableInfo {
-        private String tableName;
-        private String createTableSql;
-        private String indexInfo;
-    }
+    // table + index 정보 추출
+    public static StringBuilder getMetaDataInfo(Set<String> tables, DatabaseMetaData metaData) throws SQLException {
+        StringBuilder result = new StringBuilder();
 
-    public static AnalysisResult analyze(String sql, String url, String user, String password) throws Exception {
-        try (Connection conn = DriverManager.getConnection(url, user, password)) {
-            // 1. EXPLAIN 실행
-            String explain = runExplain(conn, sql);
+        // 데이터베이스 정보 저장
+        result.append("==============================\n");
+        result.append("[DATABASE INFO] : ").append("(ProductName)").append(metaData.getDatabaseProductName()).append("\n");
+        result.append("(ProductVersion)").append(metaData.getDatabaseProductVersion()).append("\n");
+        result.append("(DriverName)").append(metaData.getDriverName()).append("\n");
+        result.append("(DriverVersion)").append(metaData.getDriverVersion()).append("\n");
 
-            // 2. 테이블 정보 수집
-            Set<String> tableNames = extractTableNames(sql);
-            List<TableInfo> tables = new ArrayList<>();
-            for (String tableName : tableNames) {
-                tables.add(getTableInfo(conn, tableName));
-            }
 
-            return AnalysisResult.builder()
-                    .explainResult(explain)
-                    .tables(tables)
-                    .build();
-        }
-    }
 
-    private static String runExplain(Connection conn, String sql) {
-        StringBuilder sb = new StringBuilder();
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("EXPLAIN " + sql)) {
-            
-            ResultSetMetaData meta = rs.getMetaData();
-            int cols = meta.getColumnCount();
+        if (metaData.getDatabaseProductName().equalsIgnoreCase("MariaDB") ||
+                metaData.getDatabaseProductName().equalsIgnoreCase("MySQL")) {
 
-            // Header
-            for (int i = 1; i <= cols; i++) {
-                sb.append(meta.getColumnName(i)).append(" ");
-            }
-            sb.append(" ");
-
-            // Rows
-            while (rs.next()) {
-                for (int i = 1; i <= cols; i++) {
-                    sb.append(rs.getString(i)).append("	");
-                }
-                sb.append(" ");
-            }
-        } catch (SQLException e) {
-            sb.append("EXPLAIN failed: ").append(e.getMessage());
-        }
-        return sb.toString();
-    }
-
-    private static Set<String> extractTableNames(String sql) {
-        try {
-            net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(sql);
-            TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();
-            return new HashSet<>(tablesNamesFinder.getTableList(statement));
-        } catch (Exception e) {
-            log.error("Failed to extract table names: {}", e.getMessage());
-            return new HashSet<>();
-        }
-    }
-
-    private static TableInfo getTableInfo(Connection conn, String tableName) {
-        String createSql = "";
-        String indexInfo = "";
-
-        // MySQL/MariaDB 기준
-        try (java.sql.Statement stmt = conn.createStatement()) {
-            try (ResultSet rs = stmt.executeQuery("SHOW CREATE TABLE " + tableName)) {
-                if (rs.next()) createSql = rs.getString(2);
-            }
-            
-            try (ResultSet rs = stmt.executeQuery("SHOW INDEX FROM " + tableName)) {
-                StringBuilder sb = new StringBuilder();
-                ResultSetMetaData meta = rs.getMetaData();
+            Connection connection = metaData.getConnection();
+            try (Statement stmt = connection.createStatement();
+                 ResultSet rs = stmt.executeQuery("SHOW VARIABLES WHERE Variable_name IN ('tx_isolation', 'transaction_isolation', 'sql_mode')")) {
                 while (rs.next()) {
-                    for (int i = 1; i <= meta.getColumnCount(); i++) {
-                        sb.append(rs.getString(i)).append("	");
-                    }
-                    sb.append(" ");
+                    result.append(rs.getString("Variable_name")).append(rs.getString("Value"));
                 }
-                indexInfo = sb.toString();
             }
-        } catch (SQLException e) {
-            createSql = "Failed to get table info: " + e.getMessage();
         }
 
-        return TableInfo.builder()
-                .tableName(tableName)
-                .createTableSql(createSql)
-                .indexInfo(indexInfo)
-                .build();
+        for(String table : tables){
+            String targetTable = table.toUpperCase();
+
+            result.append("============================\n");
+            result.append("[TABLE INFO] : ").append(targetTable).append("\n");
+
+            // 2. 테이블 컬럼 정보 추출 (쿼리 실행 대신 getColumns API 사용)
+            try (ResultSet rs = metaData.getColumns(null, null, targetTable, null)) {
+                while (rs.next()) {
+                    String columnName = rs.getString("COLUMN_NAME");
+                    String typeName = rs.getString("TYPE_NAME");
+                    String columnSize = rs.getString("COLUMN_SIZE");
+
+                    result.append(" - ")
+                            .append(columnName)
+                            .append(" (Type: ")
+                            .append(typeName)
+                            .append(", Size: ")
+                            .append(columnSize)
+                            .append(")\n");
+                }
+            }
+
+            result.append("\n[INDEX INFO] : ").append(targetTable).append("\n");
+
+            // 3. 테이블 인덱스 정보 추출 (getIndexInfo API 사용)
+            // 파라미터: catalog, schema, table, unique(false면 모든 인덱스), approximate
+            try (ResultSet rs = metaData.getIndexInfo(null, null, targetTable, false, false)) {
+                while (rs.next()) {
+                    String indexName = rs.getString("INDEX_NAME");
+
+                    // 테이블 기본 통계 정보(IndexName이 null)는 건너뜁니다.
+                    if (indexName == null) continue;
+
+                    String columnName = rs.getString("COLUMN_NAME");
+                    boolean isUnique = !rs.getBoolean("NON_UNIQUE");
+
+                    result.append(" - Index: ")
+                            .append(indexName)
+                            .append(", Column: ")
+                            .append(columnName)
+                            .append(", Unique: ")
+                            .append(isUnique)
+                            .append("\n");
+                }
+            }
+            result.append("============================\n\n");
+        }
+        return result;
+    }
+
+    // 해당 쿼리에 사용된 테이블 리스트 추출
+    public static Set<String> extractTableMethod(String fakeSql) throws JSQLParserException {
+
+
+        net.sf.jsqlparser.statement.Statement stmt = null;
+        TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();
+
+        if (fakeSql != null) {
+            stmt = CCJSqlParserUtil.parse(fakeSql);
+            return tablesNamesFinder.getTables(stmt);
+        }
+
+        return Set.of();
+    }
+
+    public static String getExplainInfo(Connection connection, String fakeSql) throws SQLException {
+
+        ResultSet rs = null;
+
+        try(Statement stmt = connection.createStatement()){
+            String sql = MessageFormat.format("EXPLAIN {0}", fakeSql);
+            rs = stmt.executeQuery(sql);
+            StringBuilder result = new StringBuilder();
+            for(int i = 1; rs.next(); i++){
+                result.append(rs.getString(i));
+            }
+
+            return result.toString();
+        }finally{
+            if(rs != null) rs.close();
+        }
     }
 }

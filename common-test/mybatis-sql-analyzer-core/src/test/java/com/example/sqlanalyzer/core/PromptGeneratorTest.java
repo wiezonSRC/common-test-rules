@@ -1,18 +1,18 @@
 package com.example.sqlanalyzer.core;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 
-import static org.junit.jupiter.api.Assertions.*;
 class PromptGeneratorTest {
 
     private Connection connection;
+    private final String queryId = "findBadPerformancePayments";
+    private final String mapperPath = "src/test/resources/mapper/TestMapper.xml";
+    private final Path mapperPathDir = Path.of("src/test/resources/mapper");
 
     @BeforeEach
     void set() throws Exception {
@@ -32,7 +32,6 @@ class PromptGeneratorTest {
         }
 
     }
-
     @AfterEach
     void remove() throws Exception{
         if(connection != null && !connection.isClosed()){
@@ -71,8 +70,11 @@ class PromptGeneratorTest {
      */
     @Test
     @DisplayName("Prompt 생성")
-    void printPrompt(){
+    void printPrompt() throws Exception {
+        StringBuilder prompt = PromptGenerator.generatePrompt(connection, queryId, mapperPath, mapperPathDir);
+        System.out.println(prompt);
 
+        Assertions.assertNotNull(prompt);
     }
-  
+
 }
