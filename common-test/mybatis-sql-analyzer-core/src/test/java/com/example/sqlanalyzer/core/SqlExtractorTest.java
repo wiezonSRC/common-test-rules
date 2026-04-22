@@ -172,4 +172,19 @@ class SqlExtractorTest {
         Assertions.assertFalse(sqlSnippetRegistry.isEmpty());
     }
 
+    @Test
+    @DisplayName("findMapperFiles - 여러 파일에 걸쳐 queryId 검색 성공")
+    void findMapperFiles_multipleFiles() throws Exception {
+        // TestMapper.xml, TestMapper2.xml, TestMapper3.xml, SampleMapper.xml 모두 포함
+        List<Path> result = SqlExtractor.findMapperFiles(mapperBaseDir, queryId);
+        Assertions.assertEquals(4, result.size());
+    }
+
+    @Test
+    @DisplayName("findMapperFiles - 존재하지 않는 queryId 는 빈 리스트 반환")
+    void findMapperFiles_notFound() throws Exception {
+        List<Path> result = SqlExtractor.findMapperFiles(mapperBaseDir, "nonExistentQueryId");
+        Assertions.assertTrue(result.isEmpty());
+    }
+
 }

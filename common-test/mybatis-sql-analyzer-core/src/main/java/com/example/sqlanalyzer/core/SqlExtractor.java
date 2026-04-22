@@ -150,6 +150,76 @@ public class SqlExtractor {
         return fakeSql.toString();
     }
 
+    /**
+     * 지정된 디렉토리에서 특정 queryId를 포함하는 MyBatis 매퍼 XML 파일 목록을 반환한다.
+     *
+     * <p>queryId는 select, insert, update, delete 태그의 id 속성으로 탐색한다.
+     * 동일한 queryId가 여러 파일에 분산될 수 있으므로 List로 반환한다.
+     * IntelliJ 플러그인의 SqlAnalyzerService에서 매퍼 파일 선택 UI를 구성할 때도 사용한다.
+     *
+     * @param mapperBaseDir 매퍼 XML 파일들이 위치한 루트 디렉토리
+     * @param queryId       탐색할 MyBatis 쿼리 ID (예: "findBadPerformancePayments")
+     * @return queryId를 포함하는 XML 파일 경로 목록 (없으면 빈 List 반환, null 반환 없음)
+     * @throws IOException                  파일 탐색 중 IO 오류 발생 시
+     * @throws ParserConfigurationException XML 파서 설정 오류 시
+     * @throws SAXException                 XML 파싱 오류 시
+     */
+    public static List<Path> findMapperFiles(Path mapperBaseDir, String queryId)
+            throws IOException, ParserConfigurationException, SAXException {
+
+        List<Path> matchedPaths = new ArrayList<>();
+
+        if (!Files.isDirectory(mapperBaseDir)) {
+            // 디렉토리가 없으면 조용히 빈 리스트를 반환 (예외 대신 경고 로그)
+            log.warn("매퍼 디렉토리가 존재하지 않습니다: {}", mapperBaseDir);
+            return matchedPaths;
+        }
+
+        // XML 파서 사전 설정: MyBatis DTD 검증을 끄지 않으면 오프라인 환경에서 네트워크 요청 발생
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setValidating(false);
+        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+
+        String[] targetTags = {"select", "insert", "update", "delete"};
+
+        // .xml 확장자를 가진 파일만 탐색 (하위 디렉토리 포함)
+        List<File> xmlFiles;
+        try (Stream<Path> paths = Files.walk(mapperBaseDir)) {
+            xmlFiles = paths
+                    .filter(Files::isRegularFile)
+                    .filter(p -> p.toString().endsWith(".xml"))
+                    .map(Path::toFile)
+                    .toList();
+        }
+
+        for (File xmlFile : xmlFiles) {
+            Document document = builder.parse(xmlFile);
+            document.getDocumentElement().normalize();
+
+            // 파일 하나에서 queryId를 찾으면 즉시 다음 파일로 이동 (중복 추가 방지)
+            boolean found = false;
+            for (String tagName : targetTags) {
+                NodeList nodeList = document.getElementsByTagName(tagName);
+
+                for (int i = 0; i < nodeList.getLength(); i++) {
+                    Node idAttr = nodeList.item(i).getAttributes().getNamedItem("id");
+                    if (idAttr != null && queryId.equals(idAttr.getNodeValue())) {
+                        matchedPaths.add(xmlFile.toPath());
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (found) {
+                    break;
+                }
+            }
+        }
+
+        return matchedPaths;
+    }
+
     // queryId와 매칭되는 태그블럭 return
     public static Node getQueryIdDetail(String queryId, String mapperPath) throws ParserConfigurationException, SAXException, IOException {
 
