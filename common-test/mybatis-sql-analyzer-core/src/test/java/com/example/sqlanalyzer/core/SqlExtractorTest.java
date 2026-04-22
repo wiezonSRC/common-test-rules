@@ -3,23 +3,13 @@ package com.example.sqlanalyzer.core;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.util.TablesNamesFinder;
 import org.junit.jupiter.api.*;
-import org.w3c.dom.Document;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.*;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -59,70 +49,10 @@ class SqlExtractorTest {
     }
 
     @Test
-    @DisplayName("QueryId 가 포함된 mapper 찾기")
-    void findMapperXml() throws IOException, ParserConfigurationException, SAXException {
-
-        List<String> matchedFilePaths = new ArrayList<>();
-
-        // 1. 매퍼 디렉토리 존재 확인
-        if(!Files.isDirectory(mapperBaseDir)){
-            Assertions.fail("매퍼 디렉토리가 존재하지 않습니다.");
-        }
-
-        // 2. xml 파일 리스트 찾기
-        List<File> xmlFileList;
-        try (Stream<Path> paths = Files.walk(mapperBaseDir)) {
-            xmlFileList = paths
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith("xml"))
-                    .map(Path::toFile)
-                    .toList();
-        }
-
-
-        // 3. queryId 존재하는 mapper 필터링
-
-        // - XML 파서 셋팅 (인터넷 접속 방지용 DTD 검증 끄기)
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setValidating(false);
-        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-        DocumentBuilder builder = factory.newDocumentBuilder();
-
-        String[] targetTags = {"select", "insert", "update", "delete"};
-
-        // queryId 매칭해보기
-        for(File xml : xmlFileList){
-            Document document = builder.parse(xml);
-            document.getDocumentElement().normalize();
-
-            boolean isMatchedInFile = false;
-            for(String tagName : targetTags){
-                NodeList nodeList = document.getElementsByTagName(tagName);
-
-                for(int i = 0; i < nodeList.getLength(); i++){
-                    if(queryId.equals(nodeList.item(i).getAttributes().getNamedItem("id").getNodeValue())){
-                        matchedFilePaths.add(xml.getAbsolutePath());
-                        isMatchedInFile = true;
-                        break;
-                    }
-                }
-
-                if(isMatchedInFile){
-                    break;
-                }
-            }
-        }
-
-
-        Assertions.assertEquals(4, matchedFilePaths.size());
-    }
-
-    @Test
     @DisplayName("Dynamic Query 추출")
     void findDynamicQuery() throws Exception {
         Node queryIdNode = SqlExtractor.getQueryIdDetail(queryId, mapperPath);
         if (queryIdNode != null) {
-            System.out.println(SqlExtractor.nodeToString(queryIdNode));
             assertNotNull(queryIdNode.getTextContent());
         }else{
             fail();
@@ -156,11 +86,6 @@ class SqlExtractorTest {
         Set<String> tableNames = new HashSet<>(tablesNamesFinder.getTableList(statement));
 
         // 4. Then: 최종 결과 검증
-        if (fakeSql != null) {
-            System.out.println("생성된 가짜 SQL: " + fakeSql.replaceAll("\\s+", " ").trim());
-            System.out.println("추출된 테이블명: " + tableNames);
-        }
-
         Assertions.assertEquals(3, tableNames.size());
 
     }
@@ -175,9 +100,15 @@ class SqlExtractorTest {
     @Test
     @DisplayName("findMapperFiles - 여러 파일에 걸쳐 queryId 검색 성공")
     void findMapperFiles_multipleFiles() throws Exception {
-        // TestMapper.xml, TestMapper2.xml, TestMapper3.xml, SampleMapper.xml 모두 포함
         List<Path> result = SqlExtractor.findMapperFiles(mapperBaseDir, queryId);
-        Assertions.assertEquals(4, result.size());
+
+        List<String> fileNames = result.stream()
+                .map(p -> p.getFileName().toString())
+                .sorted()
+                .toList();
+
+        assertEquals(4, result.size());
+        assertEquals(List.of("SampleMapper.xml", "TestMapper.xml", "TestMapper2.xml", "TestMapper3.xml"), fileNames);
     }
 
     @Test
@@ -185,6 +116,13 @@ class SqlExtractorTest {
     void findMapperFiles_notFound() throws Exception {
         List<Path> result = SqlExtractor.findMapperFiles(mapperBaseDir, "nonExistentQueryId");
         Assertions.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    @DisplayName("findMapperFiles - 존재하지 않는 디렉토리는 빈 리스트 반환")
+    void findMapperFiles_directoryNotFound() throws Exception {
+        List<Path> result = SqlExtractor.findMapperFiles(Path.of("non/existent/path"), queryId);
+        assertTrue(result.isEmpty());
     }
 
 }

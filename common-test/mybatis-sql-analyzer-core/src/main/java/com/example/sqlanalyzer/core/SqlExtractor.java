@@ -124,11 +124,7 @@ public class SqlExtractor {
                         String rawSqlXml = sqlSnippetRegistry.get(fqn);
                         if (rawSqlXml != null) {
                             try {
-                                DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-                                dbf.setValidating(false);
-                                dbf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-
-                                DocumentBuilder db = dbf.newDocumentBuilder();
+                                DocumentBuilder db = createSecureFactory().newDocumentBuilder();
                                 Document parse = db.parse(new ByteArrayInputStream(rawSqlXml.getBytes()));
 
                                 // <sql> 태그의 내용을 다시 buildFakeSql로 처리 (isForExplain 유지)
@@ -148,6 +144,27 @@ public class SqlExtractor {
         }
 
         return fakeSql.toString();
+    }
+
+    /**
+     * XXE(XML External Entity) 공격을 차단하는 안전한 DocumentBuilderFactory를 생성한다.
+     *
+     * <p>DTD 검증 비활성화만으로는 부족하다: 외부 엔티티 참조가 허용되면 공격자가
+     * XML 파일을 통해 서버 파일 시스템 읽기나 SSRF 공격을 시도할 수 있다.
+     * IntelliJ 플러그인에서 외부 경로의 XML을 파싱하는 특성상 반드시 적용해야 한다.
+     *
+     * @return XXE 차단 설정이 적용된 DocumentBuilderFactory
+     * @throws ParserConfigurationException 파서 설정 실패 시
+     */
+    private static DocumentBuilderFactory createSecureFactory() throws ParserConfigurationException {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setValidating(false);
+        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);
+        return factory;
     }
 
     /**
@@ -175,11 +192,8 @@ public class SqlExtractor {
             return matchedPaths;
         }
 
-        // XML 파서 사전 설정: MyBatis DTD 검증을 끄지 않으면 오프라인 환경에서 네트워크 요청 발생
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setValidating(false);
-        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-        DocumentBuilder builder = factory.newDocumentBuilder();
+        // XML 파서 사전 설정: XXE 차단 및 오프라인 환경에서 DTD 네트워크 요청 방지
+        DocumentBuilder builder = createSecureFactory().newDocumentBuilder();
 
         String[] targetTags = {"select", "insert", "update", "delete"};
 
@@ -194,26 +208,39 @@ public class SqlExtractor {
         }
 
         for (File xmlFile : xmlFiles) {
-            Document document = builder.parse(xmlFile);
-            document.getDocumentElement().normalize();
+            try {
+                Document document = builder.parse(xmlFile);
+                document.getDocumentElement().normalize();
 
-            // 파일 하나에서 queryId를 찾으면 즉시 다음 파일로 이동 (중복 추가 방지)
-            boolean found = false;
-            for (String tagName : targetTags) {
-                NodeList nodeList = document.getElementsByTagName(tagName);
+                // MyBatis mapper 파일이 아닌 XML(Spring 설정, Ant 빌드 등)은 오탐 방지를 위해 스킵
+                // getSqlSnippetRegistry()와 동일한 기준: 루트 태그가 <mapper>이고 namespace 속성이 있어야 함
+                Element rootElement = document.getDocumentElement();
+                if (!"mapper".equalsIgnoreCase(rootElement.getTagName())
+                        || rootElement.getAttribute("namespace").trim().isEmpty()) {
+                    continue;
+                }
 
-                for (int i = 0; i < nodeList.getLength(); i++) {
-                    Node idAttr = nodeList.item(i).getAttributes().getNamedItem("id");
-                    if (idAttr != null && queryId.equals(idAttr.getNodeValue())) {
-                        matchedPaths.add(xmlFile.toPath());
-                        found = true;
+                // 파일 하나에서 queryId를 찾으면 즉시 다음 파일로 이동 (중복 추가 방지)
+                boolean found = false;
+                for (String tagName : targetTags) {
+                    NodeList nodeList = document.getElementsByTagName(tagName);
+
+                    for (int i = 0; i < nodeList.getLength(); i++) {
+                        Node idAttr = nodeList.item(i).getAttributes().getNamedItem("id");
+                        if (idAttr != null && queryId.equals(idAttr.getNodeValue())) {
+                            matchedPaths.add(xmlFile.toPath());
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found) {
                         break;
                     }
                 }
-
-                if (found) {
-                    break;
-                }
+            } catch (SAXException e) {
+                // 단일 파일 파싱 오류는 스킵하되 경고 로그로 추적 가능하게 유지
+                log.warn("XML 파싱 실패, 스킵합니다: {} - {}", xmlFile.getName(), e.getMessage());
             }
         }
 
@@ -224,12 +251,8 @@ public class SqlExtractor {
     public static Node getQueryIdDetail(String queryId, String mapperPath) throws ParserConfigurationException, SAXException, IOException {
 
 
-        // document xml parser dfd 검증로직 종료
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setValidating(false);
-        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-
-        DocumentBuilder builder = factory.newDocumentBuilder();
+        // XXE 차단 및 DTD 검증 비활성화가 적용된 안전한 파서 사용
+        DocumentBuilder builder = createSecureFactory().newDocumentBuilder();
         Document document = builder.parse(mapperPath);
 
         String[] targetTags = {"select", "delete", "update", "insert"};
@@ -265,11 +288,8 @@ public class SqlExtractor {
                     .toList();
         }
 
-        // 3. <sql> 찾기
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setValidating(false);
-        dbf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-        DocumentBuilder builder = dbf.newDocumentBuilder();
+        // 3. <sql> 찾기 — XXE 차단 설정이 포함된 안전한 파서 사용
+        DocumentBuilder builder = createSecureFactory().newDocumentBuilder();
         for (File xmlFile : xmlFileList) {
             Document doc = builder.parse(xmlFile);
             doc.getDocumentElement().normalize();
