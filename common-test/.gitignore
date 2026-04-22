@@ -35,3 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Project-specific ###
+# DB 접속 정보 등 민감 설정 파일
+.sql-analyzer.properties
