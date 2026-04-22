@@ -22,7 +22,6 @@ class SqlExtractorTest {
 
     @BeforeEach
     void set() throws Exception {
-        SqlExtractor.sqlSnippetRegistry = SqlExtractor.getSqlSnippetRegistry(mapperBaseDir);
         // H2 메모리 DB 설정 (테이블 및 인덱스 생성)
         connection = DriverManager.getConnection("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1", "sa", "");
 

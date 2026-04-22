@@ -34,8 +34,6 @@ public class SqlExtractor {
 
     private SqlExtractor() {}
 
-    static Map<String, String> sqlSnippetRegistry;
-
     // 가짜 sql 생성
     public static String buildFakeSql(Node nodeList, boolean isForExplain, String currentNamespace, Map<String, String> sqlSnippetRegistry) {
         NodeList childNodes = nodeList.getChildNodes();
