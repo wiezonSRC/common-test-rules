@@ -73,6 +73,21 @@ class JdbcAnalyzerTest {
 
 
     @Test
+    @DisplayName("getExplainInfo - 결과에 컬럼 헤더와 구분선이 포함되어야 함")
+    void getExplainInfo_includesColumnHeaderAndSeparator() throws Exception {
+        // H2의 EXPLAIN은 PLAN 컬럼을 가진 단일 컬럼 결과를 반환하므로
+        // 헤더 행 + 구분선 + 데이터 행의 구조인지 검증
+        String fakeSql = "SELECT p.payment_id, p.amount FROM payments p WHERE p.amount > ?";
+        String result = JdbcAnalyzer.getExplainInfo(connection, fakeSql);
+
+        assertNotNull(result);
+        assertFalse(result.isBlank(), "EXPLAIN 결과가 비어있으면 안 됩니다.");
+        assertTrue(result.contains("-"), "컬럼 헤더와 데이터 사이의 구분선이 있어야 합니다.");
+        assertTrue(result.lines().count() >= 3, "헤더 행 + 구분선 + 데이터 행 최소 3줄이어야 합니다.");
+    }
+
+
+    @Test
     @DisplayName("Table 추출")
     void extractTables() throws Exception{
         Node queryIdDetail = SqlExtractor.getQueryIdDetail(queryId, mapperPath);

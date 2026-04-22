@@ -5,7 +5,6 @@ import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.util.TablesNamesFinder;
 import java.sql.*;
-import java.text.MessageFormat;
 import java.util.Set;
 
 @Slf4j
@@ -104,21 +103,56 @@ public class JdbcAnalyzer {
         return Set.of();
     }
 
+    /**
+     * 지정된 SQL에 대한 EXPLAIN 실행 결과를 반환한다.
+     *
+     * <p>EXPLAIN은 DB 실행 계획을 보여주며, 인덱스 활용 여부, Full Table Scan 여부 등
+     * 성능 분석에 필요한 정보를 포함한다.
+     * 결과는 '컬럼헤더 | 구분선 | 데이터 행' 형태의 텍스트로 반환한다.
+     *
+     * <p>이전 구현의 버그: {@code for (int i=1; rs.next(); i++) { rs.getString(i) }} 형태는
+     * i가 행 번호인데 컬럼 인덱스로 오용됨. MySQL EXPLAIN처럼 여러 컬럼이 있는 경우
+     * 첫 번째 행의 첫 번째 컬럼만 출력되고 이후 데이터가 모두 누락되었음.
+     *
+     * @param connection DB 연결 객체 (호출자가 생명주기를 관리해야 함 — try-with-resources 권장)
+     * @param fakeSql    실행할 SQL (MyBatis #{}, ${} 바인딩이 '?'로 치환된 fakeSql)
+     * @return EXPLAIN 결과 텍스트 (컬럼헤더 + 구분선 + 데이터 행)
+     * @throws SQLException EXPLAIN 실행 실패 시
+     */
     public static String getExplainInfo(Connection connection, String fakeSql) throws SQLException {
+        // PreparedStatement 대신 Statement 사용: EXPLAIN은 '?'가 없는 정적 명령
+        // fakeSql의 '?'는 이미 치환된 상태이므로 파라미터 바인딩 불필요
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("EXPLAIN " + fakeSql)) {
 
-        ResultSet rs = null;
-
-        try(Statement stmt = connection.createStatement()){
-            String sql = MessageFormat.format("EXPLAIN {0}", fakeSql);
-            rs = stmt.executeQuery(sql);
+            ResultSetMetaData meta = rs.getMetaData();
+            int columnCount = meta.getColumnCount();
             StringBuilder result = new StringBuilder();
-            for(int i = 1; rs.next(); i++){
-                result.append(rs.getString(i));
+
+            // 헤더 행: 컬럼명을 '|' 구분자로 나열
+            for (int col = 1; col <= columnCount; col++) {
+                result.append(meta.getColumnName(col));
+                if (col < columnCount) {
+                    result.append(" | ");
+                }
+            }
+            result.append("\n");
+            result.append("-".repeat(60)).append("\n");
+
+            // 데이터 행: 각 행의 모든 컬럼 값을 '|' 구분자로 출력
+            // null 값은 "NULL" 문자열로 표시 (DB의 NULL과 구분 불가한 빈 문자열 방지)
+            while (rs.next()) {
+                for (int col = 1; col <= columnCount; col++) {
+                    String value = rs.getString(col);
+                    result.append(value != null ? value : "NULL");
+                    if (col < columnCount) {
+                        result.append(" | ");
+                    }
+                }
+                result.append("\n");
             }
 
             return result.toString();
-        }finally{
-            if(rs != null) rs.close();
         }
     }
 }
