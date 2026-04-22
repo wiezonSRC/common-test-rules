@@ -1,0 +1,59 @@
+plugins {
+    id 'java'
+    // IntelliJ Platform Gradle Plugin 2.x: Gradle 8.1+ / 9.x 호환, plugin.xml, runIde, buildPlugin 태스크 제공
+    // (1.x 는 Gradle 9에서 DefaultArtifactPublicationSet 제거로 동작 불가)
+    id 'org.jetbrains.intellij.platform' version '2.6.0'
+}
+
+group = 'com.example'
+version = '0.1.0'
+
+// IntelliJ SDK 는 자체 JDK를 사용하므로 toolchain 대신 sourceCompatibility 사용
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+
+    // IntelliJ Platform Gradle Plugin 2.x 전용 리포지터리 설정
+    intellijPlatform {
+        defaultRepositories()
+    }
+}
+
+dependencies {
+    // core 모듈: SqlExtractor, JdbcAnalyzer, PromptGenerator 포함
+    implementation project(':mybatis-sql-analyzer-core')
+
+    // JDBC 드라이버: core에서 compileOnly로 선언되어 있어 플러그인 실행 시 번들 필요
+    implementation 'org.mariadb.jdbc:mariadb-java-client:3.3.3'
+    implementation 'com.mysql:mysql-connector-j:8.3.0'
+
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    // 테스트: SqlAnalyzerConfig, SqlAnalyzerService 는 순수 JUnit으로 테스트
+    testImplementation 'com.h2database:h2:2.2.224'
+    testImplementation platform('org.junit:junit-bom:5.10.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // IntelliJ Platform 2.x SDK 의존성 선언 방식
+    // 타입 'IC' = IntelliJ IDEA Community Edition (무료, 의존성 최소화)
+    intellijPlatform {
+        intellijIdeaCommunity '2024.1'
+        // 추가 플러그인 없음: 플랫폼 기본 기능만 사용
+    }
+}
+
+intellijPlatform {
+    pluginConfiguration {
+        version = project.version
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
