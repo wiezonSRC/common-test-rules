@@ -223,7 +223,36 @@ public String analyze(Project project, String mapperFilePath, String queryId) th
 
 ---
 
-## 6. 파일 변경 요약
+## 6. 주석 작성 가이드라인
+
+이 프로젝트는 나중에 코드를 다시 봐도 맥락을 파악할 수 있도록 **상세 주석**을 필수로 작성한다.
+
+### 원칙
+- **클래스 레벨**: 클래스의 역할, 주요 책임, 사용 시 주의사항을 서술형으로 기술
+- **메서드 레벨**: 메서드의 목적, 파라미터 의미, 반환값, 예외 상황, 호출 순서 의존성을 명시
+- **핵심 로직 인라인**: 왜(Why) 이 방식을 선택했는지, 어떤 엣지 케이스를 처리하는지 설명
+- **MyBatis 태그 처리 분기**: 각 `case`(where, set, foreach, choose 등)가 왜 그 방식으로 처리되는지 설명
+- **IntelliJ API 호출부**: EDT(Event Dispatch Thread) 제약, Background Task 이유 등 IDE 특성 관련 맥락 기술
+
+### 예시 스타일
+```java
+/**
+ * MyBatis 매퍼 XML에서 특정 queryId의 동적 쿼리를 실행 가능한 SQL로 변환한다.
+ *
+ * <p>MyBatis 동적 태그(if, where, foreach 등)는 실제 런타임에 파라미터가 있어야 완성되므로,
+ * EXPLAIN 실행을 위해 #{}, ${} 바인딩을 '?'로 치환하고 조건 태그를 최대한 펼쳐서
+ * DB가 파싱할 수 있는 형태의 '가짜 SQL(fakeSql)'을 생성한다.
+ *
+ * @param node            분석 대상 쿼리의 DOM Node (select/insert/update/delete 태그)
+ * @param isForExplain    true이면 choose 태그에서 첫 번째 when 절만 선택 (EXPLAIN용 단일 경로)
+ * @param currentNamespace 현재 매퍼의 namespace (include refid 풀네임 조합에 사용)
+ * @param sqlSnippetRegistry <sql> 태그 캐시 맵 (key: namespace.id, value: raw XML 문자열)
+ * @return EXPLAIN에 사용할 수 있는 단순화된 SQL 문자열
+ */
+public static String buildFakeSql(...) { ... }
+```
+
+## 7. 파일 변경 요약
 
 | 파일 | 변경 유형 |
 |------|----------|
