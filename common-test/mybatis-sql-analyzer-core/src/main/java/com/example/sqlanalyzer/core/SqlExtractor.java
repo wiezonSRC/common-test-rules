@@ -245,9 +245,20 @@ public class SqlExtractor {
         return matchedPaths;
     }
 
-    // queryId와 매칭되는 태그블럭 return
+    /**
+     * queryId에 해당하는 MyBatis 매퍼 XML 태그 블록의 DOM Node를 반환한다.
+     *
+     * <p>select, delete, update, insert 순서로 탐색하며, 가장 먼저 일치하는 Node를 반환한다.
+     * 일치하는 queryId가 없을 경우 null을 반환하므로 호출자는 null 체크를 해야 한다.
+     *
+     * @param queryId    분석 대상 쿼리 ID
+     * @param mapperPath 매퍼 XML 파일 경로 (String 타입)
+     * @return 해당 queryId의 DOM Node (없으면 null)
+     * @throws ParserConfigurationException XML 파서 설정 오류 시
+     * @throws SAXException                 XML 파싱 오류 시
+     * @throws IOException                  파일 읽기 실패 시
+     */
     public static Node getQueryIdDetail(String queryId, String mapperPath) throws ParserConfigurationException, SAXException, IOException {
-
 
         // XXE 차단 및 DTD 검증 비활성화가 적용된 안전한 파서 사용
         DocumentBuilder builder = createSecureFactory().newDocumentBuilder();
@@ -266,6 +277,26 @@ public class SqlExtractor {
         }
 
         return null;
+    }
+
+    /**
+     * {@link #getQueryIdDetail(String, String)}의 Path 타입 오버로드.
+     *
+     * <p>IntelliJ 플러그인 등 Path 기반 코드에서 {@code toString()} 변환 없이
+     * 바로 호출할 수 있도록 편의 메서드로 제공한다.
+     * 내부적으로 기존 String 버전에 위임하므로 로직 중복이 없다.
+     *
+     * @param queryId    분석 대상 쿼리 ID
+     * @param mapperPath 매퍼 XML 파일 경로 (Path 타입)
+     * @return 해당 queryId의 DOM Node (없으면 null)
+     * @throws ParserConfigurationException XML 파서 설정 오류 시
+     * @throws SAXException                 XML 파싱 오류 시
+     * @throws IOException                  파일 읽기 실패 시
+     */
+    public static Node getQueryIdDetail(String queryId, Path mapperPath)
+            throws ParserConfigurationException, SAXException, IOException {
+        // Path를 String으로 변환하여 기존 구현 재사용 (로직 중복 방지)
+        return getQueryIdDetail(queryId, mapperPath.toString());
     }
 
     // <sql> 태그 캐싱처리

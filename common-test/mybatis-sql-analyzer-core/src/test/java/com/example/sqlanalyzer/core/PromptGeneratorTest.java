@@ -11,7 +11,7 @@ class PromptGeneratorTest {
 
     private Connection connection;
     private final String queryId = "findBadPerformancePayments";
-    private final String mapperPath = "src/test/resources/mapper/TestMapper.xml";
+    private final Path mapperPath = Path.of("src/test/resources/mapper/TestMapper.xml");
     private final Path mapperPathDir = Path.of("src/test/resources/mapper");
 
     @BeforeEach
