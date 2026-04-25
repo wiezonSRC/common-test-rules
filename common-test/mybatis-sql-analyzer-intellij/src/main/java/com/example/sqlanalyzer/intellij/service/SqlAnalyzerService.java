@@ -49,10 +49,34 @@ public class SqlAnalyzerService {
         Path mapperDir = Path.of(projectBasePath).resolve(config.getMapperBaseDir()).normalize();
 
         // 3. JDBC 연결 생성 후 프롬프트 생성 (try-with-resources로 연결 자동 해제)
+        // IntelliJ 플러그인은 별도 classloader를 사용하므로 DriverManager가 드라이버를
+        // 자동 탐지하지 못한다. URL 기반으로 드라이버 클래스를 명시적으로 로드한다.
+        loadJdbcDriver(config.getJdbcUrl());
+
         try (Connection connection = DriverManager.getConnection(
                 config.getJdbcUrl(), config.getJdbcUser(), config.getJdbcPassword())) {
 
             return PromptGenerator.generatePrompt(connection, queryId, selectedMapperFile, mapperDir).toString();
+        }
+    }
+
+    /**
+     * JDBC URL 접두사를 보고 드라이버 클래스를 명시적으로 로드한다.
+     *
+     * <p>IntelliJ 플러그인의 classloader는 시스템 classloader와 분리되어 있어,
+     * DriverManager의 ServiceLoader 기반 드라이버 자동 탐지가 동작하지 않는다.
+     * Class.forName()으로 플러그인 classloader에서 드라이버를 직접 로드하면
+     * DriverManager에 등록되어 정상 연결이 가능해진다.
+     */
+    private void loadJdbcDriver(String jdbcUrl) throws ClassNotFoundException {
+        if (jdbcUrl.startsWith("jdbc:mariadb:") || jdbcUrl.startsWith("jdbc:mysql:")) {
+            Class.forName("org.mariadb.jdbc.Driver");
+        } else if (jdbcUrl.startsWith("jdbc:postgresql:")) {
+            Class.forName("org.postgresql.Driver");
+        } else if (jdbcUrl.startsWith("jdbc:h2:")) {
+            Class.forName("org.h2.Driver");
+        } else {
+            log.warn("알 수 없는 JDBC URL 형식입니다. 드라이버를 수동으로 로드하지 않습니다: {}", jdbcUrl);
         }
     }
 
