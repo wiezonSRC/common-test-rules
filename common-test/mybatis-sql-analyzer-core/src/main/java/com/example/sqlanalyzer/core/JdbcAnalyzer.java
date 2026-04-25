@@ -120,39 +120,65 @@ public class JdbcAnalyzer {
      * @throws SQLException EXPLAIN 실행 실패 시
      */
     public static String getExplainInfo(Connection connection, String fakeSql) throws SQLException {
-        // PreparedStatement 대신 Statement 사용: EXPLAIN은 '?'가 없는 정적 명령
-        // fakeSql의 '?'는 이미 치환된 상태이므로 파라미터 바인딩 불필요
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery("EXPLAIN " + fakeSql)) {
+        // PreparedStatement를 사용해 ?를 JDBC 바인드 파라미터로 처리한다.
+        // 문자열 치환(replaceAll) 방식은 SQL 리터럴 내부의 ?까지 변경할 위험이 있고
+        // JDBC 표준에서 벗어난다. PreparedStatement는 파서가 ?의 위치를 정확히 파악하므로 안전하다.
+        // EXPLAIN은 실행 계획(인덱스·조인 방식)이 목적이므로 더미값 바인딩으로 충분하다.
+        try (PreparedStatement pstmt = connection.prepareStatement("EXPLAIN " + fakeSql)) {
+            int paramCount = countParams(fakeSql);
 
-            ResultSetMetaData meta = rs.getMetaData();
-            int columnCount = meta.getColumnCount();
-            StringBuilder result = new StringBuilder();
-
-            // 헤더 행: 컬럼명을 '|' 구분자로 나열
-            for (int col = 1; col <= columnCount; col++) {
-                result.append(meta.getColumnName(col));
-                if (col < columnCount) {
-                    result.append(" | ");
-                }
+            for (int i = 1; i <= paramCount; i++) {
+                pstmt.setNull(i, java.sql.Types.NULL);
             }
-            result.append("\n");
-            result.append("-".repeat(60)).append("\n");
 
-            // 데이터 행: 각 행의 모든 컬럼 값을 '|' 구분자로 출력
-            // null 값은 "NULL" 문자열로 표시 (DB의 NULL과 구분 불가한 빈 문자열 방지)
-            while (rs.next()) {
+            try (ResultSet rs = pstmt.executeQuery()) {
+                ResultSetMetaData meta = rs.getMetaData();
+                int columnCount = meta.getColumnCount();
+                StringBuilder result = new StringBuilder();
+
+                // 헤더 행: 컬럼명을 '|' 구분자로 나열
                 for (int col = 1; col <= columnCount; col++) {
-                    String value = rs.getString(col);
-                    result.append(value != null ? value : "NULL");
+                    result.append(meta.getColumnName(col));
                     if (col < columnCount) {
                         result.append(" | ");
                     }
                 }
                 result.append("\n");
-            }
+                result.append("-".repeat(60)).append("\n");
 
-            return result.toString();
+                // 데이터 행: 각 행의 모든 컬럼 값을 '|' 구분자로 출력
+                // null 값은 "NULL" 문자열로 표시 (DB의 NULL과 구분 불가한 빈 문자열 방지)
+                while (rs.next()) {
+                    for (int col = 1; col <= columnCount; col++) {
+                        String value = rs.getString(col);
+                        result.append(value != null ? value : "NULL");
+                        if (col < columnCount) {
+                            result.append(" | ");
+                        }
+                    }
+                    result.append("\n");
+                }
+
+                return result.toString();
+            }
         }
+    }
+
+    /**
+     * SQL 문자열에서 바인드 파라미터 '?'의 개수를 반환한다.
+     *
+     * <p>문자열 리터럴 내부의 ?는 카운트하지 않는 완전한 구현이 이상적이나,
+     * buildFakeSql()이 생성하는 fakeSql은 문자열 리터럴이 없으므로 단순 카운트로 충분하다.
+     */
+    private static int countParams(String sql) {
+        int count = 0;
+
+        for (char c : sql.toCharArray()) {
+            if (c == '?') {
+                count++;
+            }
+        }
+
+        return count;
     }
 }
