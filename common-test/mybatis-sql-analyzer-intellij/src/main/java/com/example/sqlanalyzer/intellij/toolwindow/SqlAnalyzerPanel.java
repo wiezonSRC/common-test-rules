@@ -9,6 +9,7 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -259,19 +260,53 @@ public class SqlAnalyzerPanel extends JPanel {
 
     /**
      * IntelliJ 디렉토리 선택 다이얼로그를 열어 매퍼 베이스 디렉토리를 선택한다.
+     *
+     * <p>다이얼로그 초기 위치를 현재 프로젝트 루트로 설정한다.
+     * mapperDirField에 이미 경로가 입력된 경우 해당 경로를 초기 위치로 우선 사용한다.
      * 선택 완료 후 파일 목록을 자동 갱신한다.
      */
     private void browseMapperDir() {
+        // 초기 위치 결정: 입력된 경로 → 프로젝트 루트 → null(시스템 기본) 순으로 폴백
+        VirtualFile initialDir = resolveInitialBrowseDir();
+
         VirtualFile chosen = FileChooser.chooseFile(
                 FileChooserDescriptorFactory.createSingleFolderDescriptor(),
                 project,
-                null
+                initialDir
         );
 
         if (chosen != null) {
             mapperDirField.setText(chosen.getPath());
             reloadMapperFiles();
         }
+    }
+
+    /**
+     * 파일 선택 다이얼로그의 초기 디렉토리를 결정한다.
+     *
+     * <ol>
+     *   <li>mapperDirField에 유효한 경로가 입력된 경우 → 해당 경로</li>
+     *   <li>입력이 없거나 경로가 존재하지 않는 경우 → 현재 프로젝트 루트</li>
+     *   <li>프로젝트 루트도 확인 불가한 경우 → null (IntelliJ 기본 동작)</li>
+     * </ol>
+     */
+    private VirtualFile resolveInitialBrowseDir() {
+        // 1. 이미 입력된 경로가 있으면 해당 경로 우선 사용
+        String currentText = mapperDirField.getText().trim();
+        if (!currentText.isBlank()) {
+            VirtualFile existing = LocalFileSystem.getInstance().findFileByPath(currentText);
+            if (existing != null && existing.isDirectory()) {
+                return existing;
+            }
+        }
+
+        // 2. 현재 프로젝트 루트를 초기 위치로 사용
+        String basePath = project.getBasePath();
+        if (basePath != null) {
+            return LocalFileSystem.getInstance().findFileByPath(basePath);
+        }
+
+        return null;
     }
 
     /**
