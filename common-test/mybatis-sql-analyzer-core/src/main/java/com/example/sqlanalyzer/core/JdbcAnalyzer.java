@@ -114,6 +114,12 @@ public class JdbcAnalyzer {
      * i가 행 번호인데 컬럼 인덱스로 오용됨. MySQL EXPLAIN처럼 여러 컬럼이 있는 경우
      * 첫 번째 행의 첫 번째 컬럼만 출력되고 이후 데이터가 모두 누락되었음.
      *
+     * <p>바인드 파라미터 처리 방식:
+     * MariaDB에서 {@code LIMIT ?}에 {@code setNull(i, Types.NULL)}을 바인딩하면
+     * "syntax error near 'null, null'" 오류가 발생한다.
+     * EXPLAIN은 실행 계획(인덱스·조인 방식) 조회가 목적이므로 실제 값은 중요하지 않다.
+     * 모든 파라미터에 더미 정수 1을 바인딩하면 MariaDB/MySQL/H2 등 모든 DB에서 안전하게 동작한다.
+     *
      * @param connection DB 연결 객체 (호출자가 생명주기를 관리해야 함 — try-with-resources 권장)
      * @param fakeSql    실행할 SQL (MyBatis #{}, ${} 바인딩이 '?'로 치환된 fakeSql)
      * @return EXPLAIN 결과 텍스트 (컬럼헤더 + 구분선 + 데이터 행)
@@ -128,7 +134,10 @@ public class JdbcAnalyzer {
             int paramCount = countParams(fakeSql);
 
             for (int i = 1; i <= paramCount; i++) {
-                pstmt.setNull(i, java.sql.Types.NULL);
+                // setNull(Types.NULL) 은 MariaDB의 LIMIT ? 에 NULL 을 바인딩하여
+                // "syntax error near 'null, null'" 오류를 유발한다.
+                // EXPLAIN 목적상 실제 값이 불필요하므로 더미 정수 1 로 대체한다.
+                pstmt.setObject(i, 1);
             }
 
             try (ResultSet rs = pstmt.executeQuery()) {

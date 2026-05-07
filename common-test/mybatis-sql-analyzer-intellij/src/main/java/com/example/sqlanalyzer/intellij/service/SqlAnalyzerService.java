@@ -5,10 +5,15 @@ import com.example.sqlanalyzer.core.SqlExtractor;
 import com.example.sqlanalyzer.intellij.config.SqlAnalyzerConfig;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * IntelliJ 플러그인의 분석 오케스트레이터.
@@ -26,29 +31,22 @@ public class SqlAnalyzerService {
     /**
      * 지정된 매퍼 파일의 queryId로 AI 프롬프트를 생성한다.
      *
-     * <p>호출 전 전제 조건:
-     * 1. projectBasePath/{@code .sql-analyzer.properties} 파일이 존재해야 함
-     * 2. 해당 properties의 jdbc.url DB에 분석 대상 테이블이 존재해야 함
+     * <p>DB 연결 정보는 DbSettingsDialog가 IntelliJ PropertiesComponent에 저장한 값을
+     * SqlAnalyzerConfig 값 객체로 전달받는다. 파일 기반 설정(.sql-analyzer.properties)은
+     * 사용하지 않는다.
      *
-     * @param projectBasePath    프로젝트 루트 절대 경로 (IntelliJ의 project.getBasePath() 값)
+     * @param config             DB 연결 정보 값 객체 (jdbcUrl, jdbcUser, jdbcPassword)
      * @param selectedMapperFile 분석할 매퍼 XML 파일 경로
+     * @param mapperBaseDir      매퍼 XML 파일들의 루트 디렉토리 (상대 경로 해석 기준)
      * @param queryId            분석할 MyBatis 쿼리 ID
      * @return 생성된 AI 프롬프트 문자열
      * @throws Exception DB 연결 실패, 파일 파싱 실패, queryId 미존재 등 모든 분석 예외
      */
-    public String analyze(String projectBasePath, Path selectedMapperFile, String queryId) throws Exception {
-        // 1. 설정 파일 로드 (JDBC 연결 정보 + 매퍼 디렉토리)
-        Path configPath = Path.of(projectBasePath, ".sql-analyzer.properties");
-        SqlAnalyzerConfig config = SqlAnalyzerConfig.load(configPath);
-
+    public String analyze(SqlAnalyzerConfig config, Path selectedMapperFile,
+                          Path mapperBaseDir, String queryId) throws Exception {
         log.info("SQL 분석 시작 - queryId: {}, mapperFile: {}", queryId, selectedMapperFile);
 
-        // 2. 설정의 mapper.base.dir 을 절대경로로 변환
-        //    (properties에 상대경로로 저장되어 있으면 프로젝트 루트 기준으로 해석)
-        //    normalize(): ".." 등 상대 경로 참조를 제거하여 실제 경로로 변환
-        Path mapperDir = Path.of(projectBasePath).resolve(config.getMapperBaseDir()).normalize();
-
-        // 3. JDBC 연결 생성 후 프롬프트 생성 (try-with-resources로 연결 자동 해제)
+        // JDBC 연결 생성 후 프롬프트 생성 (try-with-resources로 연결 자동 해제)
         // IntelliJ 플러그인은 별도 classloader를 사용하므로 DriverManager가 드라이버를
         // 자동 탐지하지 못한다. URL 기반으로 드라이버 클래스를 명시적으로 로드한다.
         loadJdbcDriver(config.getJdbcUrl());
@@ -56,7 +54,8 @@ public class SqlAnalyzerService {
         try (Connection connection = DriverManager.getConnection(
                 config.getJdbcUrl(), config.getJdbcUser(), config.getJdbcPassword())) {
 
-            return PromptGenerator.generatePrompt(connection, queryId, selectedMapperFile, mapperDir).toString();
+            return PromptGenerator.generatePrompt(
+                    connection, queryId, selectedMapperFile, mapperBaseDir).toString();
         }
     }
 
@@ -83,16 +82,51 @@ public class SqlAnalyzerService {
     /**
      * 지정된 매퍼 디렉토리에서 queryId를 포함하는 파일 목록을 반환한다.
      *
-     * <p>UI 레이어(SqlAnalyzerPanel)에서 파일 선택 다이얼로그 구성에 활용한다:
-     * - 결과 1개 → 즉시 analyze() 호출
-     * - 결과 2개 이상 → 사용자 선택 다이얼로그 표시 후 analyze() 호출
-     * - 결과 0개 → 오류 메시지 표시
-     *
      * @param mapperBaseDir 매퍼 XML 파일들의 루트 디렉토리
      * @param queryId       검색할 MyBatis 쿼리 ID
      * @return queryId를 포함하는 파일 경로 목록 (없으면 빈 List)
      */
     public List<Path> findMatchingFiles(Path mapperBaseDir, String queryId) throws Exception {
         return SqlExtractor.findMapperFiles(mapperBaseDir, queryId);
+    }
+
+    /**
+     * 매퍼 베이스 디렉토리의 직속 서브디렉토리 목록을 반환한다.
+     * 첫 번째 항목은 항상 "." (루트 자신)이며, 이후 알파벳순 정렬된 서브디렉토리명이 따른다.
+     */
+    public List<String> listSubDirectories(Path mapperBaseDir) throws IOException {
+        List<String> dirs = new ArrayList<>();
+        dirs.add(".");  // 루트(기본) 항상 첫 항목
+
+        if (!Files.isDirectory(mapperBaseDir)) {
+            return dirs;
+        }
+
+        try (Stream<Path> stream = Files.list(mapperBaseDir)) {
+            stream.filter(Files::isDirectory)
+                  .map(p -> p.getFileName().toString())
+                  .sorted()
+                  .forEach(dirs::add);
+        }
+
+        return dirs;
+    }
+
+    /**
+     * 지정된 디렉토리에서 직속 XML 파일 이름 목록을 알파벳순으로 반환한다.
+     * 하위 디렉토리는 포함하지 않는다.
+     */
+    public List<String> listXmlFiles(Path directory) throws IOException {
+        if (!Files.isDirectory(directory)) {
+            return List.of();
+        }
+
+        try (Stream<Path> stream = Files.list(directory)) {
+            return stream.filter(Files::isRegularFile)
+                         .filter(p -> p.toString().endsWith(".xml"))
+                         .map(p -> p.getFileName().toString())
+                         .sorted()
+                         .collect(Collectors.toList());
+        }
     }
 }

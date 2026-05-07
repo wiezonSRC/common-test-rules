@@ -1,5 +1,6 @@
 package com.example.sqlanalyzer.intellij.service;
 
+import com.example.sqlanalyzer.intellij.config.SqlAnalyzerConfig;
 import org.junit.jupiter.api.*;
 
 import java.nio.file.*;
@@ -31,24 +32,6 @@ class SqlAnalyzerServiceTest {
             stmt.execute("CREATE TABLE orders (order_id VARCHAR(50) PRIMARY KEY, user_id VARCHAR(50), mid VARCHAR(10))");
             stmt.execute("CREATE TABLE merchants (mid VARCHAR(10) PRIMARY KEY, merchant_name VARCHAR(100), status VARCHAR(20))");
         }
-
-        // .sql-analyzer.properties: analyze() 내부에서 이 파일을 읽어 JDBC 연결 생성
-        // mapper.base.dir은 절대 경로로 기입 — tempDir이 임시 디렉토리이므로
-        // 상대 경로("..")를 resolve하면 프로젝트 외부 경로가 되어 파일을 찾을 수 없음
-        // Windows 경로의 역슬래시(\)는 Properties.load() 에서 이스케이프 문자로 해석되므로
-        // 순방향 슬래시(/)로 변환하여 저장 (Java의 Path.of()는 양방향 모두 처리 가능)
-        String mapperAbsDir = Path.of("../mybatis-sql-analyzer-core/src/test/resources/mapper")
-                .toAbsolutePath()
-                .normalize()
-                .toString()
-                .replace('\\', '/');
-        Path configFile = tempDir.resolve(".sql-analyzer.properties");
-        Files.writeString(configFile,
-                "jdbc.url=jdbc:h2:mem:svctest;DB_CLOSE_DELAY=-1\n" +
-                "jdbc.user=sa\n" +
-                "jdbc.password=\n" +
-                "mapper.base.dir=" + mapperAbsDir + "\n"
-        );
     }
 
     @AfterEach
@@ -69,8 +52,13 @@ class SqlAnalyzerServiceTest {
         Path mapperFile = Path.of("../mybatis-sql-analyzer-core/src/test/resources/mapper/TestMapper.xml")
                 .toAbsolutePath()
                 .normalize();
+        Path mapperBaseDir = mapperFile.getParent();
 
-        String prompt = service.analyze(tempDir.toString(), mapperFile, QUERY_ID);
+        // H2 JDBC 연결 정보를 SqlAnalyzerConfig 값 객체로 직접 전달
+        SqlAnalyzerConfig config = new SqlAnalyzerConfig(
+                "jdbc:h2:mem:svctest;DB_CLOSE_DELAY=-1", "sa", "");
+
+        String prompt = service.analyze(config, mapperFile, mapperBaseDir, QUERY_ID);
 
         assertNotNull(prompt);
         assertTrue(prompt.contains("[Original Query]"), "원본 쿼리 섹션 없음");
@@ -99,6 +87,25 @@ class SqlAnalyzerServiceTest {
                 .toAbsolutePath()
                 .normalize();
         List<Path> files = service.findMatchingFiles(mapperDir, "nonExistentQueryId_XYZ");
+
+        assertTrue(files.isEmpty());
+    }
+
+    @Test
+    @DisplayName("listSubDirectories - 존재하지 않는 디렉토리는 \".\" 만 반환")
+    void listSubDirectories_nonExistentDir_returnsRootOnly() throws Exception {
+        Path nonExistent = tempDir.resolve("not-here");
+        List<String> dirs = service.listSubDirectories(nonExistent);
+
+        assertEquals(1, dirs.size());
+        assertEquals(".", dirs.get(0));
+    }
+
+    @Test
+    @DisplayName("listXmlFiles - 존재하지 않는 디렉토리는 빈 리스트 반환")
+    void listXmlFiles_nonExistentDir_returnsEmpty() throws Exception {
+        Path nonExistent = tempDir.resolve("not-here");
+        List<String> files = service.listXmlFiles(nonExistent);
 
         assertTrue(files.isEmpty());
     }
