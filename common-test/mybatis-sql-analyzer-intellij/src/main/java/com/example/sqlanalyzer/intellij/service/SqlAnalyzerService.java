@@ -91,40 +91,34 @@ public class SqlAnalyzerService {
     }
 
     /**
-     * 매퍼 베이스 디렉토리의 직속 서브디렉토리 목록을 반환한다.
-     * 첫 번째 항목은 항상 "." (루트 자신)이며, 이후 알파벳순 정렬된 서브디렉토리명이 따른다.
+     * 매퍼 베이스 디렉토리 아래의 모든 XML 파일을 재귀 탐색하여
+     * 베이스 디렉토리 기준 상대 경로 문자열 목록을 알파벳순으로 반환한다.
+     *
+     * <p>단순 1-depth 탐색 방식은 {@code payment/approval/ApprovalMapper.xml} 처럼
+     * 여러 depth로 중첩된 디렉토리 구조를 지원할 수 없다.
+     * {@code Files.walk()}로 전체를 재귀 탐색하고, 상대 경로를 표시함으로써
+     * depth에 무관하게 모든 파일을 단일 목록으로 제공한다.
+     *
+     * <p>반환 예시 (OS separator 기준):
+     * <pre>
+     *   payment/approval/ApprovalMapper.xml
+     *   payment/cancel/CancelMapper.xml
+     *   user/UserMapper.xml
+     * </pre>
+     *
+     * @param mapperBaseDir 매퍼 XML 파일들의 루트 디렉토리
+     * @return 상대 경로 문자열 목록 (알파벳순, 없으면 빈 리스트)
      */
-    public List<String> listSubDirectories(Path mapperBaseDir) throws IOException {
-        List<String> dirs = new ArrayList<>();
-        dirs.add(".");  // 루트(기본) 항상 첫 항목
-
+    public List<String> listXmlFiles(Path mapperBaseDir) throws IOException {
         if (!Files.isDirectory(mapperBaseDir)) {
-            return dirs;
-        }
-
-        try (Stream<Path> stream = Files.list(mapperBaseDir)) {
-            stream.filter(Files::isDirectory)
-                  .map(p -> p.getFileName().toString())
-                  .sorted()
-                  .forEach(dirs::add);
-        }
-
-        return dirs;
-    }
-
-    /**
-     * 지정된 디렉토리에서 직속 XML 파일 이름 목록을 알파벳순으로 반환한다.
-     * 하위 디렉토리는 포함하지 않는다.
-     */
-    public List<String> listXmlFiles(Path directory) throws IOException {
-        if (!Files.isDirectory(directory)) {
             return List.of();
         }
 
-        try (Stream<Path> stream = Files.list(directory)) {
+        try (Stream<Path> stream = Files.walk(mapperBaseDir)) {
             return stream.filter(Files::isRegularFile)
                          .filter(p -> p.toString().endsWith(".xml"))
-                         .map(p -> p.getFileName().toString())
+                         // 베이스 디렉토리 기준 상대 경로로 변환 — depth에 무관하게 표시
+                         .map(p -> mapperBaseDir.relativize(p).toString())
                          .sorted()
                          .collect(Collectors.toList());
         }
