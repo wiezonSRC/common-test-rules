@@ -19,7 +19,10 @@ import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -68,6 +71,25 @@ public class SqlAnalyzerPanel extends JPanel {
     private JButton           analyzeButton;
     private JTextArea         resultArea;
     private JButton           copyButton;
+
+    /** mapperFileCombo 검색 필터링을 위한 전체 파일 목록 캐시 */
+    private List<String> allMapperFiles  = new ArrayList<>();
+
+    /**
+     * Mapper File 필터링 도중 removeAllItems()/addItem() 이 유발하는 ActionEvent의
+     * cascade를 막기 위한 가드 플래그.
+     * true인 동안 mapperFileCombo ActionListener가 reloadQueryIds()를 호출하지 않는다.
+     */
+    private boolean isUpdatingFilter = false;
+
+    /** queryIdCombo 검색 필터링을 위한 전체 Query ID 목록 캐시 */
+    private List<String> allQueryIds = new ArrayList<>();
+
+    /**
+     * Query ID 필터링 도중 removeAllItems()/addItem() 이 유발하는 이벤트 cascade를 막는 플래그.
+     * mapperFileCombo의 isUpdatingFilter와 독립적으로 관리한다.
+     */
+    private boolean isUpdatingQueryFilter = false;
 
     public SqlAnalyzerPanel(Project project) {
         this.project = project;
@@ -161,8 +183,64 @@ public class SqlAnalyzerPanel extends JPanel {
         panel.add(new JLabel("Mapper File:"), gbc);
 
         mapperFileCombo = new JComboBox<>();
-        mapperFileCombo.setToolTipText("mapper base dir 기준 상대 경로로 표시됩니다.");
-        mapperFileCombo.addActionListener(e -> reloadQueryIds());
+        // editable=true: 키보드 입력으로 파일명을 검색/필터링할 수 있다
+        mapperFileCombo.setEditable(true);
+        mapperFileCombo.setToolTipText("파일명을 입력하면 실시간으로 필터링됩니다. 목록에서 선택하면 Query ID가 자동으로 로드됩니다.");
+
+        // ActionListener: 드롭다운에서 항목을 선택하거나 Enter를 눌렀을 때만 queryId 갱신
+        // isUpdatingFilter=true인 필터링 도중에는 무시하여 불필요한 cascade 방지
+        mapperFileCombo.addActionListener(e -> {
+            if (!isUpdatingFilter) {
+                reloadQueryIds();
+            }
+        });
+
+        // KeyAdapter: 실제 키 입력에만 반응하여 필터링
+        //
+        // DocumentListener를 쓰면 드롭다운 항목 선택 시 내부적으로 setText()가 호출되는데,
+        // DocumentListener는 문서 write-lock을 보유한 채 동기 호출되므로
+        // filterMapperFiles() 안에서 addItem() → setText()를 재호출하면
+        // AbstractDocument.writeLock()이 "Attempt to mutate in notification"을 던진다.
+        //
+        // KeyAdapter는 실제 키보드 이벤트에만 반응하며, 프로그래밍 방식의 setText()
+        // (드롭다운 선택 시 내부 호출)에는 반응하지 않으므로 재진입 문제가 없다.
+        JTextField mapperFileEditor = (JTextField) mapperFileCombo.getEditor().getEditorComponent();
+        mapperFileEditor.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                int keyCode = e.getKeyCode();
+
+                // 탐색·닫기 키는 콤보박스 내부 핸들러가 처리
+                if (keyCode == KeyEvent.VK_ESCAPE ||
+                    keyCode == KeyEvent.VK_UP     ||
+                    keyCode == KeyEvent.VK_DOWN) {
+                    return;
+                }
+
+                if (keyCode == KeyEvent.VK_ENTER) {
+                    // 필터링 결과가 1개뿐일 때만 자동 선택하여 QueryId cascade 실행.
+                    // 에디터에는 키워드가 남아있어 getSelectedItem()이 키워드를 반환하므로
+                    // 직접 항목을 꺼내 setSelectedItem() + reloadQueryIds()를 명시 호출한다.
+                    // 2개 이상이면 사용자가 직접 목록에서 선택해야 하므로 개입하지 않는다.
+                    if (mapperFileCombo.getItemCount() == 1) {
+                        String singleItem = mapperFileCombo.getItemAt(0);
+                        isUpdatingFilter = true;
+                        try {
+                            mapperFileCombo.setSelectedItem(singleItem);
+                            mapperFileEditor.setText(singleItem);
+                            mapperFileCombo.hidePopup();
+                        } finally {
+                            isUpdatingFilter = false;
+                        }
+                        reloadQueryIds();
+                    }
+                    return;
+                }
+
+                filterMapperFiles();
+            }
+        });
+
         gbc.gridx = 1; gbc.weightx = 1.0; gbc.gridwidth = 2;
         panel.add(mapperFileCombo, gbc);
         gbc.gridwidth = 1;
@@ -172,8 +250,43 @@ public class SqlAnalyzerPanel extends JPanel {
         panel.add(new JLabel("Query ID:"), gbc);
 
         queryIdCombo = new JComboBox<>();
-        // editable=true: 드롭다운에 없는 queryId도 직접 입력 가능
+        // editable=true: 키보드 타이핑으로 검색·필터링 및 미목록 queryId 직접 입력 가능
         queryIdCombo.setEditable(true);
+        queryIdCombo.setToolTipText("Query ID를 입력하면 실시간으로 필터링됩니다.");
+
+        // KeyAdapter: 타이핑 → filterQueryIds(), Enter(1건) → 자동 선택
+        JTextField queryIdEditor = (JTextField) queryIdCombo.getEditor().getEditorComponent();
+        queryIdEditor.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                int keyCode = e.getKeyCode();
+
+                if (keyCode == KeyEvent.VK_ESCAPE ||
+                    keyCode == KeyEvent.VK_UP     ||
+                    keyCode == KeyEvent.VK_DOWN) {
+                    return;
+                }
+
+                if (keyCode == KeyEvent.VK_ENTER) {
+                    // 필터링 결과가 1개이면 자동 선택
+                    if (queryIdCombo.getItemCount() == 1) {
+                        String singleItem = queryIdCombo.getItemAt(0);
+                        isUpdatingQueryFilter = true;
+                        try {
+                            queryIdCombo.setSelectedItem(singleItem);
+                            queryIdEditor.setText(singleItem);
+                            queryIdCombo.hidePopup();
+                        } finally {
+                            isUpdatingQueryFilter = false;
+                        }
+                    }
+                    return;
+                }
+
+                filterQueryIds();
+            }
+        });
+
         gbc.gridx = 1; gbc.weightx = 1.0;
         panel.add(queryIdCombo, gbc);
 
@@ -214,10 +327,25 @@ public class SqlAnalyzerPanel extends JPanel {
      *
      * <p>표시 형식: 베이스 디렉토리 기준 상대 경로 (예: {@code payment/approval/ApprovalMapper.xml})
      * depth 제한 없이 중첩된 디렉토리 구조를 모두 처리한다.
+     *
+     * <p>로드된 전체 목록을 {@code allMapperFiles}에 캐시하여 이후 검색 필터링의 원본으로 사용한다.
+     * 콤보 갱신 시 에디터 텍스트를 초기화하고 isUpdatingFilter 플래그로 불필요한 cascade를 억제한다.
      */
     private void reloadMapperFiles() {
         String baseDirStr = mapperDirField.getText().trim();
-        mapperFileCombo.removeAllItems();
+
+        // 전체 캐시 및 콤보 초기화 — 이벤트 cascade 억제
+        allMapperFiles.clear();
+        isUpdatingFilter = true;
+        try {
+            mapperFileCombo.removeAllItems();
+
+            // 에디터 텍스트(검색어)도 함께 초기화
+            JTextField editor = (JTextField) mapperFileCombo.getEditor().getEditorComponent();
+            editor.setText("");
+        } finally {
+            isUpdatingFilter = false;
+        }
 
         if (baseDirStr.isBlank()) {
             return;
@@ -225,7 +353,15 @@ public class SqlAnalyzerPanel extends JPanel {
 
         try {
             List<String> files = service.listXmlFiles(Path.of(baseDirStr));
-            files.forEach(mapperFileCombo::addItem);
+            allMapperFiles.addAll(files);
+
+            // 전체 목록으로 콤보 채우기 — 이벤트 cascade 억제
+            isUpdatingFilter = true;
+            try {
+                files.forEach(mapperFileCombo::addItem);
+            } finally {
+                isUpdatingFilter = false;
+            }
         } catch (Exception e) {
             log.warn("XML 파일 목록 로드 실패: {}", baseDirStr, e);
         }
@@ -236,10 +372,22 @@ public class SqlAnalyzerPanel extends JPanel {
 
     /**
      * 현재 선택된 XML 파일에서 DML id 목록을 읽어 queryIdCombo를 갱신한다.
+     *
+     * <p>전체 목록을 {@code allQueryIds}에 캐시하여 이후 검색 필터링의 원본으로 사용한다.
      * 파싱 실패 시 log.warn 처리 후 콤보를 비운다.
      */
     private void reloadQueryIds() {
-        queryIdCombo.removeAllItems();
+        // 캐시 및 콤보 초기화 — cascade 억제
+        allQueryIds.clear();
+        isUpdatingQueryFilter = true;
+        try {
+            queryIdCombo.removeAllItems();
+            JTextField editor = (JTextField) queryIdCombo.getEditor().getEditorComponent();
+            editor.setText("");
+        } finally {
+            isUpdatingQueryFilter = false;
+        }
+
         Path mapperFilePath = getSelectedMapperFilePath();
 
         if (mapperFilePath == null) {
@@ -248,9 +396,119 @@ public class SqlAnalyzerPanel extends JPanel {
 
         try {
             List<String> ids = XmlQueryIdReader.readIds(mapperFilePath);
-            ids.forEach(queryIdCombo::addItem);
+            allQueryIds.addAll(ids);
+
+            isUpdatingQueryFilter = true;
+            try {
+                ids.forEach(queryIdCombo::addItem);
+            } finally {
+                isUpdatingQueryFilter = false;
+            }
         } catch (Exception e) {
             log.warn("queryId 목록 로드 실패: {}", mapperFilePath, e);
+        }
+    }
+
+    /**
+     * 에디터에 입력된 키워드로 {@code allMapperFiles}를 필터링하여 mapperFileCombo 목록을 갱신한다.
+     *
+     * <p>동작 방식:
+     * <ol>
+     *   <li>에디터 현재 텍스트(키워드)를 캡처한다.</li>
+     *   <li>{@code isUpdatingFilter = true}로 설정하여 removeAllItems/addItem이 유발하는
+     *       ActionEvent를 차단한다 (queryId cascade 방지).</li>
+     *   <li>키워드가 포함된 파일명만 콤보에 재추가한다(대소문자 무시, contains 방식).</li>
+     *   <li>에디터 텍스트를 캡처한 키워드로 복원하고 커서를 끝으로 이동한다.</li>
+     *   <li>매칭 결과가 있으면 드롭다운 팝업을 자동으로 표시한다.</li>
+     * </ol>
+     *
+     * <p>KeyAdapter에서 호출되므로 문서 알림(notification) 컨텍스트 바깥에서 실행된다.
+     * 사용자가 드롭다운에서 항목을 클릭하면 {@code isUpdatingFilter = false} 상태에서
+     * ActionListener가 실행되어 {@code reloadQueryIds()}가 호출된다.
+     */
+    private void filterMapperFiles() {
+        // isUpdatingFilter가 true인 동안(reloadMapperFiles 실행 중)에는 필터링을 건너뜀.
+        // KeyAdapter는 프로그래밍적 addItem()/setText()에 반응하지 않으므로
+        // 실제로 이 가드가 발동될 경우는 거의 없지만, 방어적 안전 장치로 유지한다.
+        if (isUpdatingFilter) {
+            return;
+        }
+
+        JTextField editor  = (JTextField) mapperFileCombo.getEditor().getEditorComponent();
+        // removeAllItems()는 내부적으로 editor 텍스트를 "" 로 초기화한다.
+        // 키워드를 그 전에 캡처해두지 않으면 필터링 기준을 잃게 된다.
+        String     keyword = editor.getText();
+        String     lower   = keyword.toLowerCase();
+
+        isUpdatingFilter = true;
+        try {
+            mapperFileCombo.removeAllItems();
+
+            List<String> filtered = lower.isBlank()
+                    ? allMapperFiles
+                    : allMapperFiles.stream()
+                                    .filter(f -> f.toLowerCase().contains(lower))
+                                    .collect(java.util.stream.Collectors.toList());
+
+            filtered.forEach(mapperFileCombo::addItem);
+
+            // addItem()이 에디터를 첫 번째 항목으로 덮어쓰므로 원래 키워드로 복원
+            editor.setText(keyword);
+            editor.setCaretPosition(keyword.length());
+
+            // 검색어가 있고 매칭 결과가 존재하면 팝업 자동 표시
+            if (!lower.isBlank() && !filtered.isEmpty()) {
+                mapperFileCombo.showPopup();
+            }
+        } finally {
+            isUpdatingFilter = false;
+        }
+    }
+
+    /**
+     * 에디터에 입력된 키워드로 {@code allQueryIds}를 필터링하여 queryIdCombo 목록을 갱신한다.
+     *
+     * <p>filterMapperFiles()와 동일한 패턴을 사용한다:
+     * <ol>
+     *   <li>에디터 텍스트(키워드)를 캡처한다.</li>
+     *   <li>{@code isUpdatingQueryFilter = true}로 설정하여 addItem()의 이벤트 cascade를 차단한다.</li>
+     *   <li>키워드를 포함하는 id만 콤보에 재추가한다(대소문자 무시, contains 방식).</li>
+     *   <li>에디터 텍스트를 키워드로 복원하고 팝업을 표시한다.</li>
+     * </ol>
+     */
+    private void filterQueryIds() {
+        // isUpdatingQueryFilter가 true인 동안(reloadQueryIds 실행 중)에는 필터링을 건너뜀.
+        // filterMapperFiles()와 동일한 방어적 가드.
+        if (isUpdatingQueryFilter) {
+            return;
+        }
+
+        JTextField editor  = (JTextField) queryIdCombo.getEditor().getEditorComponent();
+        // removeAllItems()가 editor 텍스트를 초기화하기 전에 키워드를 미리 캡처한다.
+        String     keyword = editor.getText();
+        String     lower   = keyword.toLowerCase();
+
+        isUpdatingQueryFilter = true;
+        try {
+            queryIdCombo.removeAllItems();
+
+            List<String> filtered = lower.isBlank()
+                    ? allQueryIds
+                    : allQueryIds.stream()
+                                 .filter(id -> id.toLowerCase().contains(lower))
+                                 .collect(java.util.stream.Collectors.toList());
+
+            filtered.forEach(queryIdCombo::addItem);
+
+            // addItem()이 에디터를 첫 번째 항목으로 덮어쓰므로 키워드 복원
+            editor.setText(keyword);
+            editor.setCaretPosition(keyword.length());
+
+            if (!lower.isBlank() && !filtered.isEmpty()) {
+                queryIdCombo.showPopup();
+            }
+        } finally {
+            isUpdatingQueryFilter = false;
         }
     }
 

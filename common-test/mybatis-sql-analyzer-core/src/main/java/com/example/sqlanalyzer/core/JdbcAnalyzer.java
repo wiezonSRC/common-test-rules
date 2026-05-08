@@ -10,9 +10,23 @@ import java.util.Set;
 @Slf4j
 public class JdbcAnalyzer {
 
+    /** 유틸리티 클래스 — 인스턴스 생성 불가 */
     private JdbcAnalyzer() {}
 
-    // table + index 정보 추출
+    /**
+     * 쿼리에 사용된 테이블들의 컬럼 정보와 인덱스 정보를 수집하여 텍스트로 반환한다.
+     *
+     * <p>MariaDB/MySQL의 경우 {@code SHOW VARIABLES}로 트랜잭션 격리 수준과 sql_mode를 함께 출력한다.
+     *
+     * <p>catalog에 {@code null}을 전달하면 서버의 전체 데이터베이스를 대상으로 조회되어
+     * 동일 테이블명이 여러 DB에 존재할 경우 정보가 중복 출력된다.
+     * {@code metaData.getConnection().getCatalog()}로 현재 접속 DB를 명시하여 범위를 한정한다.
+     *
+     * @param tables   분석 대상 테이블명 집합 (SQL에서 파싱된 값)
+     * @param metaData 현재 JDBC 연결의 DatabaseMetaData
+     * @return DATABASE INFO + TABLE INFO(컬럼) + INDEX INFO 를 포함한 텍스트
+     * @throws SQLException 메타데이터 조회 실패 시
+     */
     public static StringBuilder getMetaDataInfo(Set<String> tables, DatabaseMetaData metaData) throws SQLException {
         StringBuilder result = new StringBuilder();
 
@@ -37,6 +51,11 @@ public class JdbcAnalyzer {
             }
         }
 
+        // catalog=null 이면 서버의 모든 데이터베이스를 대상으로 조회되어
+        // 동일 테이블명이 여러 DB에 존재할 경우 컬럼·인덱스 정보가 중복 출력된다.
+        // 현재 접속 중인 DB(catalog)를 명시적으로 지정하여 조회 범위를 한정한다.
+        String catalog = metaData.getConnection().getCatalog();
+
         for(String table : tables){
             String targetTable = table.toUpperCase();
 
@@ -44,7 +63,8 @@ public class JdbcAnalyzer {
             result.append("[TABLE INFO] : ").append(targetTable).append("\n");
 
             // 2. 테이블 컬럼 정보 추출 (쿼리 실행 대신 getColumns API 사용)
-            try (ResultSet rs = metaData.getColumns(null, null, targetTable, null)) {
+            // catalog 를 현재 DB로 한정 — null 이면 모든 DB 검색으로 중복 출력됨
+            try (ResultSet rs = metaData.getColumns(catalog, null, targetTable, null)) {
                 while (rs.next()) {
                     String columnName = rs.getString("COLUMN_NAME");
                     String typeName = rs.getString("TYPE_NAME");
@@ -64,7 +84,8 @@ public class JdbcAnalyzer {
 
             // 3. 테이블 인덱스 정보 추출 (getIndexInfo API 사용)
             // 파라미터: catalog, schema, table, unique(false면 모든 인덱스), approximate
-            try (ResultSet rs = metaData.getIndexInfo(null, null, targetTable, false, false)) {
+            // catalog 를 현재 DB로 한정 — null 이면 모든 DB 검색으로 중복 출력됨
+            try (ResultSet rs = metaData.getIndexInfo(catalog, null, targetTable, false, false)) {
                 while (rs.next()) {
                     String indexName = rs.getString("INDEX_NAME");
 
@@ -88,7 +109,16 @@ public class JdbcAnalyzer {
         return result;
     }
 
-    // 해당 쿼리에 사용된 테이블 리스트 추출
+    /**
+     * SQL 문자열을 파싱하여 사용된 테이블명 집합을 반환한다.
+     *
+     * <p>JSQLParser의 {@link TablesNamesFinder}를 사용하여 FROM, JOIN, 서브쿼리 등
+     * 모든 절에서 참조되는 테이블명을 추출한다.
+     *
+     * @param fakeSql 파싱할 SQL 문자열 (MyBatis #{}, ${} 바인딩이 '?'로 치환된 fakeSql)
+     * @return SQL에서 참조된 테이블명 집합 (파라미터가 null이거나 빈 경우 빈 집합)
+     * @throws JSQLParserException SQL 파싱 실패 시
+     */
     public static Set<String> extractTableMethod(String fakeSql) throws JSQLParserException {
 
 
