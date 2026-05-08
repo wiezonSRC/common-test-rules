@@ -12,11 +12,13 @@
    - 1-2. Mapper 파일 재귀 탐색 및 계층 구조 UI
    - 1-3. Mapper File 실시간 검색 필터
    - 1-4. Query ID 실시간 검색 필터
+   - 1-5. AI 프롬프트 페르소나 문구 개선
 2. [버그 수정](#2-버그-수정)
    - 2-1. MariaDB EXPLAIN `LIMIT null, null` 오류
    - 2-2. 테이블 메타데이터 중복 출력
    - 2-3. Mapper File 필터링 `IllegalStateException`
-   - 2-4. Mapper File / Query ID Enter 자동완성 미작동
+   - 2-4. Mapper File / Query ID Enter 자동완성 미작동 (1건)
+   - 2-5. Mapper File / Query ID Enter 자동완성 미작동 (다중 결과)
 3. [변경 파일 목록](#3-변경-파일-목록)
 
 ---
@@ -439,7 +441,98 @@ if (keyCode == KeyEvent.VK_ENTER) {
 |--------------|-----------|
 | 0건 | 아무것도 안 함 |
 | **1건** | **해당 항목 자동 선택 → 다음 단계 cascade** |
-| 2건 이상 | 아무것도 안 함 (목록에서 직접 선택 유도) |
+| 2건 이상 | 아무것도 안 함 (목록에서 직접 선택 유도) ← **2-5에서 추가 수정** |
+
+---
+
+### 2-5. Mapper File / Query ID Enter 자동완성 미작동 (다중 결과)
+
+**파일:** `mybatis-sql-analyzer-intellij/.../toolwindow/SqlAnalyzerPanel.java`
+
+#### 증상
+
+필터링 결과가 **2건 이상**일 때 Enter를 눌러도 첫 번째 항목이 선택되지 않았다.
+다른 항목으로 커서를 옮겼다가 다시 첫 번째 항목으로 돌아와서 Enter를 눌러야만 정상 선택이 됐다.
+
+#### 원인 분석
+
+`keyReleased`는 JComboBox가 Enter를 처리하는 **`keyPressed` 이후**에 실행된다는 타이밍 문제였다.
+
+```
+[keyPressed] JComboBox 내부 처리
+  → 팝업 닫기
+  → editor 텍스트("approval" 등 키워드)를 setSelectedItem()으로 커밋
+  → ActionEvent 발생 → ActionListener → reloadQueryIds("approval") → 실패
+
+[keyReleased] 우리 KeyAdapter 처리 (이미 늦은 시점)
+  → getItemCount() == 1 ? → false(다중) → 아무것도 안 함
+  → 이미 커밋된 "approval"가 selectedItem으로 남음
+```
+
+2-4에서 1건 케이스는 `getItemAt(0)`으로 강제 교정했지만, **2건 이상은 교정 분기가 없어** 키워드가 선택값으로 그대로 남았다.
+
+화살표 키로 다른 항목을 탐색한 후에야 동작하는 이유:
+- 화살표 탐색 시 editor 텍스트가 **실제 항목명**으로 변경됨
+- Enter 시 JComboBox가 해당 실제 항목명을 커밋 → `allMapperFiles`에 존재 → 올바르게 처리됨
+
+#### 수정
+
+`getItemCount() == 1` 조건을 `allMapperFiles.contains(editorText)` 검증으로 교체한다.
+editor 텍스트가 유효한 파일 경로가 아닐 경우, 화살표 탐색 결과(selectedIndex) 또는 첫 번째 항목을 교정 선택한다.
+
+```java
+if (keyCode == KeyEvent.VK_ENTER) {
+    // keyReleased는 JComboBox의 keyPressed(팝업 닫기 + selectedItem 커밋) 이후에 실행된다.
+    // editor 텍스트가 allMapperFiles에 없는 키워드라면 → 유효한 항목으로 교정한다.
+    //   1. 화살표 키로 탐색하여 selectedIndex가 유효한 경우 → 해당 항목
+    //   2. 탐색 없이 바로 Enter(selectedIndex == -1) → 첫 번째 항목(index 0)
+    String editorText = mapperFileEditor.getText();
+
+    if (!allMapperFiles.contains(editorText) && mapperFileCombo.getItemCount() > 0) {
+        int idx = mapperFileCombo.getSelectedIndex();
+        String itemToSelect = (idx >= 0 && idx < mapperFileCombo.getItemCount())
+                ? mapperFileCombo.getItemAt(idx)
+                : mapperFileCombo.getItemAt(0);
+        isUpdatingFilter = true;
+        try {
+            mapperFileCombo.setSelectedItem(itemToSelect);
+            mapperFileEditor.setText(itemToSelect);
+            mapperFileCombo.hidePopup();
+        } finally {
+            isUpdatingFilter = false;
+        }
+        reloadQueryIds();
+    }
+    return;
+}
+```
+
+Query ID 콤보도 동일한 패턴(`allQueryIds.contains(editorText)`)으로 수정.
+
+| 필터 결과 건수 | Enter 동작 |
+|--------------|-----------|
+| 0건 | 아무것도 안 함 |
+| **1건** | **`allMapperFiles`에 없음 → index 0 항목 자동 선택** |
+| **2건 이상** | **`allMapperFiles`에 없음 → 화살표 탐색 항목 or index 0 자동 선택** |
+| 정확한 파일명 직접 입력 | `allMapperFiles`에 있음 → JComboBox 기본 처리로 위임 |
+
+---
+
+### 1-5. AI 프롬프트 페르소나 문구 개선
+
+**파일:** `mybatis-sql-analyzer-core/.../core/PromptGenerator.java`
+
+#### 변경 전 / 후
+
+| 구분 | 내용 |
+|------|------|
+| **변경 전** | `"너는 10년 차 수석 DBA이자 쿼리 튜닝 전문가야."` |
+| **변경 후** | `"실무 10년 차 DBA 수준을 가진 전문가의 견해를 이용해서 분석해줘."` |
+
+#### 배경
+
+`"너는 X야"` 방식은 AI를 특정 역할로 고정시키는 방식이다.
+`"X 수준의 견해로 분석해줘"` 방식은 AI 본연의 추론 능력을 자연스럽게 활용하도록 유도하며, 보다 실용적인 관점의 분석 결과를 이끌어낸다.
 
 ---
 
@@ -450,6 +543,7 @@ if (keyCode == KeyEvent.VK_ENTER) {
 | 파일 | 변경 유형 | 내용 |
 |------|----------|------|
 | `core/JdbcAnalyzer.java` | 버그 수정 | ① EXPLAIN `setNull` → `setObject(i, 1)` 교체<br>② `getColumns`/`getIndexInfo` catalog `null` → `getCatalog()` 교체 |
+| `core/PromptGenerator.java` | 개선 | AI 프롬프트 페르소나 문구 변경 (`"너는 X야"` → `"X 수준의 견해로 분석해줘"`) |
 
 ### `mybatis-sql-analyzer-intellij`
 
@@ -457,5 +551,5 @@ if (keyCode == KeyEvent.VK_ENTER) {
 |------|----------|------|
 | `config/SqlAnalyzerConfig.java` | 수정 | 파일 기반 `load()` 제거 → 순수 값 객체화 |
 | `toolwindow/DbSettingsDialog.java` | 신규 | JDBC 설정 다이얼로그 (PropertiesComponent 저장) |
-| `toolwindow/SqlAnalyzerPanel.java` | 수정 | ① DB Settings 버튼 추가<br>② Mapper Dir → File → QueryId 계층 UI<br>③ `...` 버튼 초기 위치 프로젝트 루트 설정<br>④ Mapper File 실시간 검색 필터 (KeyAdapter)<br>⑤ `IllegalStateException` 수정 (DocumentListener → KeyAdapter)<br>⑥ Mapper File Enter 자동완성 버그 수정<br>⑦ Query ID 실시간 검색 필터 추가 (allQueryIds / isUpdatingQueryFilter / filterQueryIds)<br>⑧ Query ID Enter 자동완성 추가 |
+| `toolwindow/SqlAnalyzerPanel.java` | 수정 | ① DB Settings 버튼 추가<br>② Mapper Dir → File → QueryId 계층 UI<br>③ `...` 버튼 초기 위치 프로젝트 루트 설정<br>④ Mapper File 실시간 검색 필터 (KeyAdapter)<br>⑤ `IllegalStateException` 수정 (DocumentListener → KeyAdapter)<br>⑥ Mapper File Enter 자동완성 버그 수정 (1건)<br>⑦ Query ID 실시간 검색 필터 추가 (allQueryIds / isUpdatingQueryFilter / filterQueryIds)<br>⑧ Query ID Enter 자동완성 추가<br>⑨ Enter 자동완성 다중 결과 버그 수정 (`allMapperFiles.contains()` 검증으로 교정 범위 확대) |
 | `service/SqlAnalyzerService.java` | 수정 | ① `listXmlFiles()` Files.walk() 재귀 탐색<br>② `analyze()` 파라미터에서 properties 파일 제거 |

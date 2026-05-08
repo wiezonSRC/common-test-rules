@@ -218,16 +218,26 @@ public class SqlAnalyzerPanel extends JPanel {
                 }
 
                 if (keyCode == KeyEvent.VK_ENTER) {
-                    // 필터링 결과가 1개뿐일 때만 자동 선택하여 QueryId cascade 실행.
-                    // 에디터에는 키워드가 남아있어 getSelectedItem()이 키워드를 반환하므로
-                    // 직접 항목을 꺼내 setSelectedItem() + reloadQueryIds()를 명시 호출한다.
-                    // 2개 이상이면 사용자가 직접 목록에서 선택해야 하므로 개입하지 않는다.
-                    if (mapperFileCombo.getItemCount() == 1) {
-                        String singleItem = mapperFileCombo.getItemAt(0);
+                    // ── Enter 처리 타이밍 문제 ──────────────────────────────────────────────
+                    // keyReleased는 JComboBox의 keyPressed(팝업 닫기 + selectedItem 커밋) 이후에 실행된다.
+                    // 즉, 이 시점에 JComboBox는 이미 editor 텍스트(검색 키워드)를 selectedItem으로
+                    // 커밋한 상태이므로, getSelectedItem()이 유효한 파일 경로 대신 키워드를 반환한다.
+                    //
+                    // 해결: editor 텍스트가 allMapperFiles에 없는 키워드라면 → 유효한 항목으로 교정한다.
+                    //   항목 선택 우선순위:
+                    //     1. 화살표 키로 탐색하여 selectedIndex가 유효한 경우 → 해당 항목
+                    //     2. 탐색 없이 바로 Enter(selectedIndex == -1) → 첫 번째 항목(index 0)
+                    String editorText = mapperFileEditor.getText();
+
+                    if (!allMapperFiles.contains(editorText) && mapperFileCombo.getItemCount() > 0) {
+                        int idx = mapperFileCombo.getSelectedIndex();
+                        String itemToSelect = (idx >= 0 && idx < mapperFileCombo.getItemCount())
+                                ? mapperFileCombo.getItemAt(idx)
+                                : mapperFileCombo.getItemAt(0);
                         isUpdatingFilter = true;
                         try {
-                            mapperFileCombo.setSelectedItem(singleItem);
-                            mapperFileEditor.setText(singleItem);
+                            mapperFileCombo.setSelectedItem(itemToSelect);
+                            mapperFileEditor.setText(itemToSelect);
                             mapperFileCombo.hidePopup();
                         } finally {
                             isUpdatingFilter = false;
@@ -268,13 +278,22 @@ public class SqlAnalyzerPanel extends JPanel {
                 }
 
                 if (keyCode == KeyEvent.VK_ENTER) {
-                    // 필터링 결과가 1개이면 자동 선택
-                    if (queryIdCombo.getItemCount() == 1) {
-                        String singleItem = queryIdCombo.getItemAt(0);
+                    // mapperFileCombo와 동일한 Enter 교정 로직:
+                    // JComboBox keyPressed가 이미 키워드를 selectedItem으로 커밋했으므로
+                    // allQueryIds에 없는 키워드라면 → 적절한 항목으로 교정한다.
+                    //   1. 화살표 탐색으로 selectedIndex가 유효하면 해당 항목
+                    //   2. 그 외 → 첫 번째 항목(index 0)
+                    String editorText = queryIdEditor.getText();
+
+                    if (!allQueryIds.contains(editorText) && queryIdCombo.getItemCount() > 0) {
+                        int idx = queryIdCombo.getSelectedIndex();
+                        String itemToSelect = (idx >= 0 && idx < queryIdCombo.getItemCount())
+                                ? queryIdCombo.getItemAt(idx)
+                                : queryIdCombo.getItemAt(0);
                         isUpdatingQueryFilter = true;
                         try {
-                            queryIdCombo.setSelectedItem(singleItem);
-                            queryIdEditor.setText(singleItem);
+                            queryIdCombo.setSelectedItem(itemToSelect);
+                            queryIdEditor.setText(itemToSelect);
                             queryIdCombo.hidePopup();
                         } finally {
                             isUpdatingQueryFilter = false;
